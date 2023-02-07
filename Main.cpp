@@ -3,6 +3,7 @@
 #include <View.h>
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 using namespace potato;
 
