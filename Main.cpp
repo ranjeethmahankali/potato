@@ -6,6 +6,23 @@
 
 using namespace potato;
 
+static void cmdLoop()
+{
+  std::string input;
+  bool        running = true;
+  while (running) {
+    std::cout << ">>> ";
+    std::getline(std::cin, input);
+    if (input.empty())
+      continue;
+    if (input == "exit") {
+      running = false;
+      continue;
+    }
+    std::cout << "Received command: " << input << std::endl;
+  }
+};
+
 static void advance(const Board& b)
 {
   view::set(b);
@@ -14,8 +31,9 @@ static void advance(const Board& b)
 
 int main(int argc, char** argv)
 {
+  Board       b;
+  std::thread cmdThread(cmdLoop);
   view::start();
-  Board b;
   advance(b);
   advance(b.move({4, 6}, {4, 4}));
   advance(b.move({4, 1}, {4, 3}));
@@ -26,7 +44,7 @@ int main(int argc, char** argv)
   advance(b.move({5, 5}, {3, 4}));
   advance(b.move({2, 2}, {3, 4}));
   advance(b.move({3, 7}, {3, 4}));
-  std::this_thread::sleep_for(std::chrono::seconds(4));
+  cmdThread.join();
   view::stop();
   return 0;
 }
