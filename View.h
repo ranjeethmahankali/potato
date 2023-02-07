@@ -2,10 +2,7 @@
 
 #include <Board.h>
 #include <GLUtil.h>
-#include <condition_variable>
 #include <glm/glm.hpp>
-#include <mutex>
-#include <thread>
 
 namespace potato {
 
@@ -119,31 +116,12 @@ private:
   VertexBuffer mVBuf;
 };
 
-struct RenderLoop
-{
-  static RenderLoop& start();
-  void               set(const Board& b);
-  ~RenderLoop();
+namespace view {
 
-private:
-  RenderLoop();
-  RenderLoop(const RenderLoop&)                  = delete;
-  RenderLoop(RenderLoop&&)                       = delete;
-  const RenderLoop& operator=(const RenderLoop&) = delete;
-  const RenderLoop& operator=(RenderLoop&&)      = delete;
-  void              render();
-  static void       wait();
-  static void       loop();
-  void              join();
-  int               initGL();
+void start();
+void set(const Board& b);
+void stop();
 
-private:
-  static BoardView               sView;
-  static GLFWwindow*             sWindow;
-  static bool                    sPaused;
-  static std::condition_variable sCV;
-  static std::mutex              sMutex;
-  std::thread                    mThread;
-};
+}  // namespace view
 
 }  // namespace potato
