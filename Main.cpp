@@ -37,7 +37,6 @@ int initGL(GLFWwindow*& window)
     return 1;
   }
   gl::logger().info("OpenGL bindings are ready.");
-  // TODO: Init shader.
   // TODO: Mouse support
   int W, H;
   GL_CALL(glfwGetFramebufferSize(window, &W, &H));
@@ -66,10 +65,9 @@ static std::vector<Board> makeBoards()
 
 int main(int argc, char** argv)
 {
-  Board       b;
-  int         err    = 0;
   GLFWwindow* window = nullptr;
   try {
+    int err = 0;
     if ((err = initGL(window))) {
       gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
       return err;
@@ -93,7 +91,7 @@ int main(int argc, char** argv)
   }
   catch (const std::exception& e) {
     gl::logger().critical("Fatal error: {}", e.what());
-    err = -1;
+    return -1;
   }
-  return err;
+  return 0;
 }
