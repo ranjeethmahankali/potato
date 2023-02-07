@@ -16,9 +16,29 @@ set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake)
 project(potato)
 
 find_package(glm CONFIG REQUIRED)
+find_package(glew REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 file(GLOB POTATO_SRC "*.cpp")
 add_executable(potato ${POTATO_SRC})
 target_link_libraries(potato PRIVATE
-  glm::glm)
+  glm::glm
+  GLEW::GLEW
+  glfw
+  spdlog::spdlog
+  spdlog::spdlog_header_only
+)
 target_include_directories(potato PRIVATE "./")
+
+# Generate the texture
+add_custom_command(TARGET potato
+  POST_BUILD
+  COMMAND python3 ${PROJECT_SOURCE_DIR}/genTexture.py ${CMAKE_BUILD_TYPE}
+)
+
+# Copy the shaders to bin dir
+add_custom_command(TARGET potato
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/*.glsl ${CMAKE_CURRENT_BINARY_DIR}
+)

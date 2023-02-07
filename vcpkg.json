@@ -2,6 +2,9 @@
   "name": "potato",
   "version-string": "0.0.0",
   "dependencies": [
-    "glm"
+    "glm",
+    "glew",
+    "glfw3",
+    "spdlog"
   ]
 }

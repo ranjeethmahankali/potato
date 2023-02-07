@@ -318,7 +318,7 @@ static void mvSliders(const Board&                     b,
       if (Piece::color(b.piece(to)) != color) {
         dst.emplace_back(b).move(from, to).clearMask(to, Piece::CASTLE);
       }
-      if (!b.piece(from)) {
+      if (b.piece(to)) {
         break;
       }
       to += d;
