@@ -1,5 +1,6 @@
 #include <Util.h>
 #include <View.h>
+#include <condition_variable>
 #include <fstream>
 
 namespace potato {
@@ -338,6 +339,144 @@ void BoardView::update(const Board& b)
 void BoardView::draw() const
 {
   GL_CALL(glDrawArrays(GL_TRIANGLES, 0, mVBuf.size()));
+}
+
+bool                    RenderLoop::sPaused = false;
+GLFWwindow*             RenderLoop::sWindow = nullptr;
+BoardView               RenderLoop::sView   = BoardView(Board());
+std::mutex              RenderLoop::sMutex  = std::mutex();
+std::condition_variable RenderLoop::sCV     = std::condition_variable();
+
+RenderLoop& RenderLoop::start()
+{
+  static RenderLoop sLoop = RenderLoop();
+  return sLoop;
+}
+
+void RenderLoop::set(const Board& b)
+{
+  sView.update(b);
+  render();
+}
+
+RenderLoop::RenderLoop()
+    : mThread(&RenderLoop::loop)
+{
+  try {
+    int err = 0;
+    if ((err = initGL())) {
+      gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
+      return;
+    }
+    Shader::get().use();
+  }
+  catch (const std::exception& e) {
+    gl::logger().critical("Fatal error: {}", e.what());
+    return;
+  }
+}
+
+RenderLoop::~RenderLoop()
+{
+  if (!glfwWindowShouldClose(sWindow)) {
+    glfwSetWindowShouldClose(sWindow, GLFW_FALSE);  // Force close the window.
+  }
+  join();
+  gl::logger().info("Cleaning up...\n");
+  if (sWindow) {
+    glfwDestroyWindow(sWindow);
+  }
+  glfwTerminate();
+}
+
+void RenderLoop::render()
+{
+  std::lock_guard<std::mutex> lock(sMutex);
+  sPaused = false;
+  sCV.notify_one();
+}
+
+void RenderLoop::wait()
+{
+  {
+    std::lock_guard<std::mutex> lock(sMutex);
+    sPaused = true;
+  }
+  while (sPaused) {
+    std::unique_lock<std::mutex> lock(sMutex);
+    sCV.wait(lock);
+    lock.unlock();
+  }
+}
+
+void RenderLoop::loop()
+{
+  try {
+    while (!glfwWindowShouldClose(sWindow)) {
+      glfwPollEvents();
+      glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      sView.draw();
+      glfwSwapBuffers(sWindow);
+      // Wait till something changes.
+      wait();
+    }
+  }
+  catch (const std::exception& e) {
+    gl::logger().critical("Fatal error: {}", e.what());
+    return;
+  }
+}
+
+void RenderLoop::join()
+{
+  mThread.join();
+}
+
+static void glfw_error_cb(int error, const char* desc)
+{
+  gl::logger().error("GLFW Error {}: {}", error, desc);
+}
+
+int RenderLoop::initGL()
+{
+  glfwSetErrorCallback(glfw_error_cb);
+  if (!glfwInit()) {
+    gl::logger().error("Failed to initialize GLFW.");
+    return 1;
+  }
+  gl::logger().info("Initialized GLFW.");
+  // Window setup
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  std::string title = "Potato";
+  sWindow           = glfwCreateWindow(1024, 1024, title.c_str(), nullptr, nullptr);
+  if (sWindow == nullptr) {
+    return 1;
+  }
+  glfwMakeContextCurrent(sWindow);
+  glfwSwapInterval(0);
+  // OpenGL bindings
+  if (glewInit() != GLEW_OK) {
+    gl::logger().error("Failed to initialize OpenGL bindings.");
+    return 1;
+  }
+  gl::logger().info("OpenGL bindings are ready.");
+  // TODO: Mouse support
+  int W, H;
+  GL_CALL(glfwGetFramebufferSize(sWindow, &W, &H));
+  GL_CALL(glViewport(0, 0, W, H));
+  GL_CALL(glEnable(GL_DEPTH_TEST));
+  GL_CALL(glEnable(GL_BLEND));
+  GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  GL_CALL(glEnable(GL_LINE_SMOOTH));
+  GL_CALL(glEnable(GL_PROGRAM_POINT_SIZE));
+  GL_CALL(glPointSize(3.0f));
+  GL_CALL(glLineWidth(1.0f));
+  GL_CALL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+  return 0;
 }
 
 }  // namespace potato
