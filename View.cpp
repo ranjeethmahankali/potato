@@ -1,5 +1,6 @@
 #include <Util.h>
 #include <View.h>
+#include <chrono>
 #include <condition_variable>
 #include <fstream>
 #include <memory>
@@ -441,6 +442,7 @@ void loop()
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       sView->draw();
       glfwSwapBuffers(sWindow);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     stop();
   }

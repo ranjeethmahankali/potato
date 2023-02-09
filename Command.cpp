@@ -14,7 +14,7 @@ using CmdFnPtr = void (*)(int, char**);
 
 spdlog::logger& logger()
 {
-  static auto sLogger = spdlog::stdout_color_mt("caommand");
+  static auto sLogger = spdlog::stdout_color_mt("command");
   return *sLogger;
 }
 
@@ -46,7 +46,13 @@ void run(std::string::iterator begin, std::string::iterator end)
     logger().error("Unrecognized command {}", sArgV[0]);
     return;
   }
-  match->second(int(sArgV.size()), sArgV.data());
+
+  try {
+    match->second(int(sArgV.size()), sArgV.data());
+  }
+  catch (const std::exception& e) {
+    logger().error("\n{}", e.what());
+  }
 }
 
 struct ArgDesc
