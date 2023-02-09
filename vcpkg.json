@@ -5,6 +5,7 @@
     "glm",
     "glew",
     "glfw3",
-    "spdlog"
+    "spdlog",
+    "cxxopts"
   ]
 }
