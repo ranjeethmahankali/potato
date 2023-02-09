@@ -14,7 +14,7 @@ using CmdFnPtr = void (*)(int, char**);
 
 spdlog::logger& logger()
 {
-  static auto sLogger = spdlog::stdout_color_mt("viewer");
+  static auto sLogger = spdlog::stdout_color_mt("caommand");
   return *sLogger;
 }
 

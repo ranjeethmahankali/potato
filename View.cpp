@@ -131,7 +131,7 @@ void VertexBuffer::alloc()
   GL_CALL(glBindVertexArray(0));
 }
 
-const Atlas& Atlas::get()
+Atlas& Atlas::get()
 {
   static Atlas sAtlas;
   return sAtlas;
@@ -152,9 +152,17 @@ Atlas::Atlas()
 
 Atlas::~Atlas()
 {
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-  // Unbind texture.
-  deleteGLTexture();
+  free();
+}
+
+void Atlas::free()
+{
+  if (mGLTextureId) {
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
+    // Unbind texture.
+    deleteGLTexture();
+    mGLTextureId = 0;
+  }
 }
 
 void Atlas::initGLTexture()
@@ -223,42 +231,38 @@ static void checkShaderLinking(uint32_t progId)
     glGetProgramInfoLog(progId, 1024, NULL, infoLog);
     gl::logger().error("Error linking shader program:\n{}", infoLog);
   }
-};
+}
 
-Shader::Shader()
+void Shader::init()
 {
+  uint32_t vsId = 0;
+  uint32_t fsId = 0;
   // Compile vertex shader.
   {
     std::string vsrc = textFromFile(absPath("vshader.glsl"));
-    mVertShaderId    = glCreateShader(GL_VERTEX_SHADER);
+    vsId             = glCreateShader(GL_VERTEX_SHADER);
     const char* cstr = vsrc.c_str();
-    GL_CALL(glShaderSource(mVertShaderId, 1, &cstr, nullptr));
-    GL_CALL(glCompileShader(mVertShaderId));
-    checkShaderCompilation(mVertShaderId, GL_VERTEX_SHADER);
+    GL_CALL(glShaderSource(vsId, 1, &cstr, nullptr));
+    GL_CALL(glCompileShader(vsId));
+    checkShaderCompilation(vsId, GL_VERTEX_SHADER);
   }
   // Compile fragment shader.
   {
     std::string fsrc = textFromFile(absPath("fshader.glsl"));
-    mFragShaderId    = glCreateShader(GL_FRAGMENT_SHADER);
+    fsId             = glCreateShader(GL_FRAGMENT_SHADER);
     const char* cstr = fsrc.c_str();
-    GL_CALL(glShaderSource(mFragShaderId, 1, &cstr, nullptr));
-    GL_CALL(glCompileShader(mFragShaderId));
-    checkShaderCompilation(mFragShaderId, GL_FRAGMENT_SHADER);
+    GL_CALL(glShaderSource(fsId, 1, &cstr, nullptr));
+    GL_CALL(glCompileShader(fsId));
+    checkShaderCompilation(fsId, GL_FRAGMENT_SHADER);
   }
   // Link
   mProgramId = glCreateProgram();
-  GL_CALL(glAttachShader(mProgramId, mVertShaderId));
-  GL_CALL(glAttachShader(mProgramId, mFragShaderId));
+  GL_CALL(glAttachShader(mProgramId, vsId));
+  GL_CALL(glAttachShader(mProgramId, fsId));
   GL_CALL(glLinkProgram(mProgramId));
   checkShaderLinking(mProgramId);
-  GL_CALL(glDeleteShader(mVertShaderId));
-  GL_CALL(glDeleteShader(mFragShaderId));
-}
-
-const Shader& Shader::get()
-{
-  static Shader sShader = Shader();
-  return sShader;
+  GL_CALL(glDeleteShader(vsId));
+  GL_CALL(glDeleteShader(fsId));
 }
 
 void Shader::use() const
@@ -266,9 +270,17 @@ void Shader::use() const
   GL_CALL(glUseProgram(mProgramId));
 }
 
+void Shader::free()
+{
+  if (mProgramId) {
+    GL_CALL(glDeleteProgram(mProgramId));
+    mProgramId = 0;
+  }
+}
+
 Shader::~Shader()
 {
-  GL_CALL(glDeleteProgram(mProgramId));
+  free();
 }
 
 static glm::vec2 quadVertex(glm::ivec2 qpos, int vertexIdx)
@@ -342,13 +354,20 @@ void BoardView::draw() const
   GL_CALL(glDrawArrays(GL_TRIANGLES, 0, mVBuf.size()));
 }
 
+void BoardView::free()
+{
+  mVBuf.free();
+}
+
 namespace view {
-bool                       sPaused = false;
-GLFWwindow*                sWindow = nullptr;
-std::unique_ptr<BoardView> sView;
-std::mutex                 sMutex = std::mutex();
-std::condition_variable    sCV    = std::condition_variable();
-std::thread                sThread;
+static bool                       sPaused = false;
+static GLFWwindow*                sWindow = nullptr;
+static std::unique_ptr<BoardView> sView;
+static std::mutex                 sMutex = std::mutex();
+static std::condition_variable    sCV    = std::condition_variable();
+static std::thread                sThread;
+static Shader                     sShader = Shader();
+static bool                       sClosed = false;
 
 static void glfw_error_cb(int error, const char* desc)
 {
@@ -396,12 +415,14 @@ int initGL()
   return 0;
 }
 
-void wait()
+void pause()
 {
-  {
-    std::lock_guard<std::mutex> lock(sMutex);
-    sPaused = true;
-  }
+  std::lock_guard<std::mutex> lock(sMutex);
+  sPaused = true;
+}
+
+void acquireLock()
+{
   while (sPaused) {
     std::unique_lock<std::mutex> lock(sMutex);
     sCV.wait(lock);
@@ -414,14 +435,14 @@ void loop()
   try {
     glfwMakeContextCurrent(sWindow);
     while (!glfwWindowShouldClose(sWindow)) {
+      acquireLock();
       glfwPollEvents();
       glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       sView->draw();
       glfwSwapBuffers(sWindow);
-      // Wait till something changes.
-      wait();
     }
+    stop();
   }
   catch (const std::exception& e) {
     gl::logger().critical("Fatal error: {}", e.what());
@@ -438,7 +459,8 @@ void start()
       return;
     }
     sView = std::make_unique<BoardView>(Board());
-    Shader::get().use();
+    sShader.init();
+    sShader.use();
   }
   catch (const std::exception& e) {
     gl::logger().critical("Fatal error: {}", e.what());
@@ -447,7 +469,7 @@ void start()
   sThread = std::thread(loop);
 }
 
-void render()
+void resume()
 {
   std::lock_guard<std::mutex> lock(sMutex);
   sPaused = false;
@@ -456,8 +478,9 @@ void render()
 
 void set(const Board& b)
 {
+  pause();
   sView->update(b);
-  render();
+  resume();
 }
 
 void join()
@@ -465,18 +488,28 @@ void join()
   sThread.join();
 }
 
+bool closed()
+{
+  return sClosed;
+}
+
 void stop()
 {
+  if (sClosed) {
+    return;
+  }
   if (!glfwWindowShouldClose(sWindow)) {
     glfwSetWindowShouldClose(sWindow, GLFW_TRUE);  // Force close the window.
   }
-  render();
-  join();
-  gl::logger().info("Cleaning up...\n");
+  gl::logger().info("Closing window...\n");
   if (sWindow) {
     glfwDestroyWindow(sWindow);
   }
+  sShader.free();
+  Atlas::get().free();
+  sView->free();
   glfwTerminate();
+  sClosed = true;
 }
 
 }  // namespace view
