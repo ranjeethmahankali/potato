@@ -86,7 +86,7 @@ uint8_t& Board::piece(glm::ivec2 pos)
   return mPieces[pos.y * 8 + pos.x];
 }
 
-uint8_t Board::piece(glm::ivec2 pos) const
+const uint8_t& Board::piece(glm::ivec2 pos) const
 {
   return mPieces[pos.y * 8 + pos.x];
 }
@@ -113,10 +113,10 @@ glm::ivec2 Board::next(glm::ivec2 pos) const
       }
     }
   }
-  return end();
+  return last();
 }
 
-glm::ivec2 Board::end() const
+glm::ivec2 Board::last() const
 {
   return glm::ivec2 {-1, -1};
 }
@@ -495,7 +495,7 @@ void Board::genMoves(std::vector<Board>& dst, uint8_t turn) const
   static constexpr std::array<int, 2>        sPwnHomeRow = {{1, 6}};
   // Iterate over the pieces.
   glm::ivec2 pos = first();
-  while (pos != end()) {
+  while (pos != last()) {
     uint8_t pc       = piece(pos);
     uint8_t color    = Piece::color(pc);
     int     colorIdx = int(color) >> 4;
@@ -528,6 +528,26 @@ void Board::genMoves(std::vector<Board>& dst, uint8_t turn) const
     }
     pos = next(pos);
   }
+}
+
+Board::Iterator Board::begin()
+{
+  return Board::Iterator(*this);
+}
+
+Board::Iterator Board::end()
+{
+  return Board::Iterator(*this, last());
+}
+
+Board::ConstIterator Board::begin() const
+{
+  return Board::ConstIterator(*this);
+}
+
+Board::ConstIterator Board::end() const
+{
+  return Board::ConstIterator(*this, last());
 }
 
 }  // namespace potato

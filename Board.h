@@ -33,19 +33,73 @@ struct Piece
 class Board
 {
 public:
+  template<bool IsConst>
+  class IteratorT
+  {
+    using BoardRef = std::conditional_t<IsConst, const Board&, Board&>;
+
+  public:
+    using PtrType   = std::conditional_t<IsConst, const uint8_t*, uint8_t*>;
+    using DerefType = std::conditional_t<IsConst, uint8_t, uint8_t&>;
+
+    IteratorT(BoardRef board, glm::ivec2 pos)
+        : mBoard(board)
+        , mPos(pos)
+    {}
+
+    explicit IteratorT(BoardRef board)
+        : IteratorT(board, board.first())
+    {}
+
+    DerefType operator*() { return mBoard.piece(mPos); }
+
+    PtrType operator->() { return mBoard.mPieces(mPos); }
+
+    bool operator==(const IteratorT<IsConst>& other) const
+    {
+      return &(other.mBoard) == &mBoard && other.mPos == mPos;
+    }
+
+    bool operator!=(const IteratorT<IsConst>& other) const { return !(*this == other); }
+
+    const IteratorT<IsConst>& operator++()
+    {
+      mPos = mBoard.next(mPos);
+      return *this;
+    }
+
+    IteratorT<IsConst> operator++(int)
+    {
+      IteratorT<IsConst> copy = *this;
+      ++(*this);
+      return copy;
+    }
+
+  private:
+    glm::ivec2 mPos;
+    BoardRef   mBoard;
+  };
+
+  using Iterator      = IteratorT<false>;
+  using ConstIterator = IteratorT<true>;
+
   Board();
   Board(const Board& other);
-  uint8_t&   piece(glm::ivec2 pos);
-  uint8_t    piece(glm::ivec2 pos) const;
-  glm::ivec2 first() const;
-  glm::ivec2 next(glm::ivec2 pos) const;
-  glm::ivec2 end() const;
-  Board&     move(glm::ivec2 from, glm::ivec2 to);
-  Board&     setMask(glm::ivec2 pos, uint8_t mask);
-  Board&     clearMask(glm::ivec2 pos, uint8_t mask);
-  Board&     setPiece(glm::ivec2 pos, uint8_t pc);
-  Board&     clearEnpassant();
-  void       genMoves(std::vector<Board>& dst, uint8_t turn) const;
+  uint8_t&       piece(glm::ivec2 pos);
+  const uint8_t& piece(glm::ivec2 pos) const;
+  glm::ivec2     first() const;
+  glm::ivec2     next(glm::ivec2 pos) const;
+  glm::ivec2     last() const;
+  Board&         move(glm::ivec2 from, glm::ivec2 to);
+  Board&         setMask(glm::ivec2 pos, uint8_t mask);
+  Board&         clearMask(glm::ivec2 pos, uint8_t mask);
+  Board&         setPiece(glm::ivec2 pos, uint8_t pc);
+  Board&         clearEnpassant();
+  void           genMoves(std::vector<Board>& dst, uint8_t turn) const;
+  Iterator       begin();
+  ConstIterator  begin() const;
+  Iterator       end();
+  ConstIterator  end() const;
 
 private:
   union
