@@ -1,5 +1,5 @@
 
-#include <Board.h>
+#include <Position.h>
 #include <iostream>
 
 namespace potato {
@@ -68,7 +68,7 @@ static size_t pieceIndex(uint8_t pc)
   }
 }
 
-size_t Board::zobristHash() const
+size_t Position::zobristHash() const
 {
   static constexpr std::array<size_t, 1152> sZobristTable = {
     {3637540459146593639, 7364309476121024617, 1822089776492239953, 7085667360092755018,

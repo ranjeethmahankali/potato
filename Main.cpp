@@ -1,4 +1,4 @@
-#include <Board.h>
+#include <Position.h>
 #include <Command.h>
 #include <GLUtil.h>
 #include <View.h>

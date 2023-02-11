@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Board.h>
 #include <GLUtil.h>
+#include <Position.h>
 #include <glm/glm.hpp>
 
 namespace potato {
@@ -108,8 +108,8 @@ private:
 
 struct BoardView
 {
-  explicit BoardView(const Board& b);
-  void update(const Board& board);
+  explicit BoardView(const Position& b);
+  void update(const Position& board);
   void draw() const;
   void free();
 

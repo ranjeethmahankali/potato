@@ -295,7 +295,7 @@ static glm::vec2 quadVertex(glm::ivec2 qpos, int vertexIdx)
          glm::vec2 {1.f, 1.f};
 }
 
-BoardView::BoardView(const Board& b)
+BoardView::BoardView(const Position& b)
 {
   static constexpr glm::vec3 Black      = glm::vec3(0.15f, 0.35f, 0.15f);
   static constexpr glm::vec3 White      = glm::vec3(0.75f);
@@ -320,7 +320,7 @@ BoardView::BoardView(const Board& b)
   update(b);
 }
 
-void BoardView::update(const Board& b)
+void BoardView::update(const Position& b)
 {
   static constexpr size_t PieceOffset = 64 * 6;
   auto                    dst         = mVBuf.data() + PieceOffset;
@@ -462,7 +462,7 @@ void start()
       gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
       return;
     }
-    sView = std::make_unique<BoardView>(Board());
+    sView = std::make_unique<BoardView>(Position());
     sShader.init();
     sShader.use();
   }
@@ -483,7 +483,7 @@ void resume()
 void update()
 {
   pause();
-  sView->update(currentBoard());
+  sView->update(currentPosition());
   resume();
 }
 

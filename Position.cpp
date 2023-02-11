@@ -1,6 +1,7 @@
-#include <Board.h>
+#include <Position.h>
 #include <algorithm>
 #include <glm/fwd.hpp>
+#include <regex>
 
 namespace potato {
 
@@ -52,7 +53,7 @@ static uint8_t flipColor(uint8_t x)
   return x ^ 0b11000;
 }
 
-Board::Board()
+Position::Position()
 {
   static constexpr std::array<uint8_t, 8> sInitialPieces = {{Piece::ROK | Piece::CASTLE,
                                                              Piece::HRS,
@@ -75,48 +76,48 @@ Board::Board()
     });
 }
 
-Board::Board(const Board& other)
+Position::Position(const Position& other)
     : mRows(other.mRows)
 {
   clearEnpassant();
 }
 
-bool Board::operator==(const Board& other) const
+bool Position::operator==(const Position& other) const
 {
   return mRows == other.mRows;
 }
 
-bool Board::operator!=(const Board& other) const
+bool Position::operator!=(const Position& other) const
 {
   return !(*this == other);
 }
 
-uint8_t& Board::piece(glm::ivec2 pos)
+uint8_t& Position::piece(glm::ivec2 pos)
 {
   return mPieces[pos.y * 8 + pos.x];
 }
 
-uint8_t Board::piece(glm::ivec2 pos) const
+uint8_t Position::piece(glm::ivec2 pos) const
 {
   return mPieces[pos.y * 8 + pos.x];
 }
 
-uint8_t* Board::ptr(glm::ivec2 pos)
+uint8_t* Position::ptr(glm::ivec2 pos)
 {
   return &(mPieces[pos.y * 8 + pos.x]);
 }
 
-const uint8_t* Board::ptr(glm::ivec2 pos) const
+const uint8_t* Position::ptr(glm::ivec2 pos) const
 {
   return &(mPieces[pos.y * 8 + pos.x]);
 }
 
-glm::ivec2 Board::first() const
+glm::ivec2 Position::first() const
 {
   return next(glm::ivec2 {-1, 0});
 }
 
-glm::ivec2 Board::next(glm::ivec2 pos) const
+glm::ivec2 Position::next(glm::ivec2 pos) const
 {
   ++pos.x;
   if (pos.x > 7) {
@@ -137,36 +138,36 @@ glm::ivec2 Board::next(glm::ivec2 pos) const
   return last();
 }
 
-glm::ivec2 Board::last() const
+glm::ivec2 Position::last() const
 {
   return glm::ivec2 {-1, -1};
 }
 
-Board& Board::move(glm::ivec2 from, glm::ivec2 to)
+Position& Position::move(glm::ivec2 from, glm::ivec2 to)
 {
   piece(to) = std::exchange(piece(from), Piece::NONE);
   return *this;
 }
 
-Board& Board::setMask(glm::ivec2 pos, uint8_t mask)
+Position& Position::setMask(glm::ivec2 pos, uint8_t mask)
 {
   piece(pos) |= mask;
   return *this;
 }
 
-Board& Board::clearMask(glm::ivec2 pos, uint8_t mask)
+Position& Position::clearMask(glm::ivec2 pos, uint8_t mask)
 {
   piece(pos) &= ~mask;
   return *this;
 }
 
-Board& Board::setPiece(glm::ivec2 pos, uint8_t pc)
+Position& Position::setPiece(glm::ivec2 pos, uint8_t pc)
 {
   piece(pos) = pc;
   return *this;
 }
 
-Board& Board::clearEnpassant()
+Position& Position::clearEnpassant()
 {
   static constexpr uint64_t sClear =
     0b10111111'10111111'10111111'10111111'10111111'10111111'10111111'10111111;
@@ -180,7 +181,7 @@ static inline bool isOnBoard(glm::ivec2 pos)
   return pos[0] > -1 && pos[1] > -1 && pos[0] < 8 && pos[1] < 8;
 }
 
-static void mvBlkPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
+static void mvBlkPwn(const Position& b, glm::ivec2 from, std::vector<Position>& dst)
 {
   // Go forward 1
   glm::ivec2 to = {from.x, from.y + 1};
@@ -250,7 +251,7 @@ static void mvBlkPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
 }
 
-static void mvWhtPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
+static void mvWhtPwn(const Position& b, glm::ivec2 from, std::vector<Position>& dst)
 {
   // Go forward 1
   glm::ivec2 to = {from.x, from.y - 1};
@@ -320,7 +321,7 @@ static void mvWhtPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
 }
 
-static void mvHorse(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
+static void mvHorse(const Position& b, glm::ivec2 from, std::vector<Position>& dst)
 {
   uint8_t color = Piece::color(b.piece(from));
   for (glm::ivec2 move : sHorseMoves) {
@@ -331,9 +332,9 @@ static void mvHorse(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
 }
 
-static void mvSliders(const Board&                     b,
+static void mvSliders(const Position&                  b,
                       glm::ivec2                       from,
-                      std::vector<Board>&              dst,
+                      std::vector<Position>&           dst,
                       const std::array<glm::ivec2, 4>& dirs)
 {
   uint8_t color = Piece::color(b.piece(from));
@@ -351,17 +352,17 @@ static void mvSliders(const Board&                     b,
   }
 }
 
-static void mvBishop(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
+static void mvBishop(const Position& b, glm::ivec2 from, std::vector<Position>& dst)
 {
   mvSliders(b, from, dst, sDiagonalDirs);
 }
 
-static void mvRook(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
+static void mvRook(const Position& b, glm::ivec2 from, std::vector<Position>& dst)
 {
   mvSliders(b, from, dst, sAxialDirs);
 }
 
-static void mvQueen(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
+static void mvQueen(const Position& b, glm::ivec2 from, std::vector<Position>& dst)
 {
   mvSliders(b, from, dst, sDiagonalDirs);
   mvSliders(b, from, dst, sAxialDirs);
@@ -375,7 +376,7 @@ static void mvQueen(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
  * @param color The attacking color
  * @return bool
  */
-static bool isAttacked(const Board& b, glm::ivec2 pos, uint8_t color)
+static bool isAttacked(const Position& b, glm::ivec2 pos, uint8_t color)
 {
   if (color != Piece::BLK && color != Piece::WHT) {  // Makes no sense.
     return false;
@@ -456,7 +457,7 @@ static bool isAttacked(const Board& b, glm::ivec2 pos, uint8_t color)
   return false;
 }
 
-static void mvKing(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
+static void mvKing(const Position& b, glm::ivec2 from, std::vector<Position>& dst)
 {
   uint8_t pc    = b.piece(from);
   uint8_t color = Piece::color(pc);
@@ -514,7 +515,7 @@ static void mvKing(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
 }
 
-void Board::genMoves(std::vector<Board>& dst, uint8_t turn) const
+void Position::genMoves(std::vector<Position>& dst, uint8_t turn) const
 {
   static constexpr std::array<glm::ivec2, 2> sForward    = {{{0, 1}, {0, -1}}};
   static constexpr std::array<int, 2>        sPwnHomeRow = {{1, 6}};
@@ -555,32 +556,32 @@ void Board::genMoves(std::vector<Board>& dst, uint8_t turn) const
   }
 }
 
-Board::Iterator Board::begin()
+Position::Iterator Position::begin()
 {
-  return Board::Iterator(*this);
+  return Position::Iterator(*this);
 }
 
-Board::Iterator Board::end()
+Position::Iterator Position::end()
 {
-  return Board::Iterator(*this, last());
+  return Position::Iterator(*this, last());
 }
 
-Board::ConstIterator Board::begin() const
+Position::ConstIterator Position::begin() const
 {
-  return Board::ConstIterator(*this);
+  return Position::ConstIterator(*this);
 }
 
-Board::ConstIterator Board::end() const
+Position::ConstIterator Position::end() const
 {
-  return Board::ConstIterator(*this, last());
+  return Position::ConstIterator(*this, last());
 }
 
-void Board::clear()
+void Position::clear()
 {
   std::fill(mRows.begin(), mRows.end(), uint64_t(0));
 }
 
-bool Board::inCheck(uint8_t color) const
+bool Position::inCheck(uint8_t color) const
 {
   auto match = std::find_if(begin(), end(), [color](uint8_t pc) {
     return Piece::color(pc) == color && Piece::type(pc) == Piece::KNG;
@@ -589,11 +590,6 @@ bool Board::inCheck(uint8_t color) const
     return isAttacked(*this, match.pos(), color);
   }
   return false;
-}
-
-Board& currentBoard()
-{
-  return currentState().mBoard;
 }
 
 int fileToX(char file)
@@ -644,10 +640,191 @@ int rankToY(char rank)
   }
 }
 
+using SubMatch = std::sub_match<std::string::const_iterator>;
+static void parsePlacement(const SubMatch& placement, Position& b)
+{
+  glm::ivec2 pos   = {0, 0};
+  auto       shift = [&pos](int offset = 1) {
+    int flat = pos.x + 8 * pos.y;
+    flat += offset;
+    pos = {flat % 8, flat / 8};
+  };
+  for (auto it = placement.first; it != placement.second; ++it) {
+    char c = *it;
+    switch (c) {
+    case 'p':
+      b.setPiece(pos, Piece::BLK | Piece::PWN);
+      shift();
+      break;
+    case 'n':
+      b.setPiece(pos, Piece::BLK | Piece::HRS);
+      shift();
+      break;
+    case 'b':
+      b.setPiece(pos, Piece::BLK | Piece::BSH);
+      shift();
+      break;
+    case 'r':
+      b.setPiece(pos, Piece::BLK | Piece::ROK);
+      shift();
+      break;
+    case 'q':
+      b.setPiece(pos, Piece::BLK | Piece::QEN);
+      shift();
+      break;
+    case 'k':
+      b.setPiece(pos, Piece::BLK | Piece::KNG);
+      shift();
+      break;
+    case 'P':
+      b.setPiece(pos, Piece::WHT | Piece::PWN);
+      shift();
+      break;
+    case 'N':
+      b.setPiece(pos, Piece::WHT | Piece::HRS);
+      shift();
+      break;
+    case 'B':
+      b.setPiece(pos, Piece::WHT | Piece::BSH);
+      shift();
+      break;
+    case 'R':
+      b.setPiece(pos, Piece::WHT | Piece::ROK);
+      shift();
+      break;
+    case 'Q':
+      b.setPiece(pos, Piece::WHT | Piece::QEN);
+      shift();
+      break;
+    case 'K':
+      b.setPiece(pos, Piece::WHT | Piece::KNG);
+      shift();
+      break;
+    case '/':
+      if (pos.x != 0) {
+        throw std::logic_error("Error when parsing the fen string");
+      }
+      break;
+    case '1':
+      shift(1);
+      break;
+    case '2':
+      shift(2);
+      break;
+    case '3':
+      shift(3);
+      break;
+    case '4':
+      shift(4);
+      break;
+    case '5':
+      shift(5);
+      break;
+    case '6':
+      shift(6);
+      break;
+    case '7':
+      shift(7);
+      break;
+    case '8':
+      shift(8);
+      break;
+    }
+  }
+}
+
+static uint8_t parseActiveColor(const SubMatch& rTurn)
+{
+  if (rTurn.length() != 1) {
+    throw std::logic_error("Invalid active color field in the fen string");
+  }
+  char c = *rTurn.first;
+  if (c == 'w') {
+    return Piece::WHT;
+  }
+  else if (c == 'b') {
+    return Piece::BLK;
+  }
+  else {
+    throw std::logic_error("Invalid active color field in the fen string");
+  }
+}
+
+static void parseCastlingRights(const SubMatch& castling, Position& b)
+{
+  if (castling.length() > 4 || castling.length() < 1) {
+    throw std::logic_error("Invalid castling rights field in the fen string.");
+  }
+  static constexpr std::array<std::tuple<char, glm::ivec2, glm::ivec2>, 4> sCastlingPos =
+    {{
+      {'K', {4, 7}, {7, 7}},
+      {'Q', {4, 7}, {0, 7}},
+      {'k', {4, 0}, {7, 0}},
+      {'q', {4, 0}, {0, 0}},
+    }};
+  for (auto it = castling.first; it != castling.second; ++it) {
+    char c     = *it;
+    auto match = std::find_if(sCastlingPos.begin(), sCastlingPos.end(), [c](auto tup) {
+      return std::get<0>(tup) == c;
+    });
+    auto [c2, kpos, rpos] = *match;
+    b.setMask(kpos, Piece::CASTLE);
+    b.setMask(rpos, Piece::CASTLE);
+  }
+}
+
+static void parseEnpassant(const SubMatch& enpassant, Position& b)
+{
+  if (enpassant.length() > 2 || enpassant.length() < 1) {
+    throw std::logic_error("Invalid enpassant target square field in the fen string");
+  }
+  b.setMask(glm::ivec2 {fileToX(*enpassant.first), rankToY(*(enpassant.first + 1))},
+            Piece::ENPASSANT);
+}
+
+Position Position::fromFen(const std::string& fen)
+{
+  std::smatch results;
+  if (std::regex_search(fen,
+                        results,
+                        std::regex("([p,P,n,N,b,B,r,R,q,Q,k,K,1-8,/]+)\\s"  // placement
+                                   "([b,w])\\s"                             // turn
+                                   "([K,Q,k,q,-]+)\\s"  // Castling rights
+                                   "([a-h,1-8,-]+)\\s"  // Enpassant target squares
+                                   "(\\d+)\\s"          // Half moves
+                                   "(\\d+)"             // Full moves.
+                                   ))) {}
+  else {
+    throw std::runtime_error("Failed to parse the above fen string");
+  }
+  Position board;
+  board.clear();
+  parsePlacement(results[1], board);
+  board.mTurn = parseActiveColor(results[2]);
+  parseCastlingRights(results[3], board);
+  parseEnpassant(results[4], board);
+  board.mHalfMoves = std::stoi(results[5]);
+  board.mFullMoves = std::stoi(results[6]);
+  return board;
+}
+
+std::string Position::fen() const
+{
+  std::string out;
+  // Placement
+  return out;
+}
+
+Position& currentPosition()
+{
+  static Position sState;
+  return sState;
+}
+
 }  // namespace potato
 
 namespace std {
-ostream& operator<<(ostream& os, const potato::Board& b)
+ostream& operator<<(ostream& os, const potato::Position& b)
 {
   static constexpr std::array<char, 256> sAsciiTable = {{
     95, 95, 95, 95, 95, 95, 95, 95, 95, 112, 98, 110, 114, 113, 107, 95,

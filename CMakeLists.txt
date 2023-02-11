@@ -21,8 +21,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
 add_library(potatolib
-  "Board.cpp"
-  "State.cpp"
+  "Position.cpp"
   "Util.cpp"
   "Zobrist.cpp"
 )

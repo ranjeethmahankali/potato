@@ -1,6 +1,6 @@
 #include <ArgVSplit.h>
-#include <Board.h>
 #include <Command.h>
+#include <Position.h>
 #include <View.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <cxxopts.hpp>
@@ -13,20 +13,22 @@
 
 namespace potato {
 
-bool doCastle(Board& b, const std::string& mv, const std::unordered_set<Board>& legal)
+bool doCastle(Position&                           b,
+              const std::string&                  mv,
+              const std::unordered_set<Position>& legal)
 {
   static constexpr glm::ivec2 sKingPos   = {4, 7};
   static constexpr glm::ivec2 sRookShort = {7, 7};
   static constexpr glm::ivec2 sRookLong  = {0, 7};
   if (mv == "o-o") {  // Short castle.
-    Board b2 = b;
+    Position b2 = b;
     if (legal.find(b2.move(sKingPos, {6, 7}).move(sRookShort, {5, 7})) != legal.end()) {
       b = b2;
       return true;
     }
   }
   else if (mv == "o-o-o") {
-    Board b2 = b;
+    Position b2 = b;
     if (legal.find(b2.move(sKingPos, {2, 7}).move(sRookLong, {3, 7})) != legal.end()) {
       b = b2;
       return true;
@@ -55,13 +57,15 @@ static uint8_t charToPiece(char c)
   }
 }
 
-bool doPromotion(Board& b, const std::string& mv, const std::unordered_set<Board>& legal)
+bool doPromotion(Position&                           b,
+                 const std::string&                  mv,
+                 const std::unordered_set<Position>& legal)
 {
   std::smatch results;
   if (std::regex_search(mv, results, std::regex("^([a-h])8=([n,b,r,q])$"))) {
-    int     file  = fileToX(*(results[1].first));
-    uint8_t piece = charToPiece(*(results[2].first));
-    Board   b2    = b;
+    int      file  = fileToX(*(results[1].first));
+    uint8_t  piece = charToPiece(*(results[2].first));
+    Position b2    = b;
     if (legal.find(
           b2.move({file, 7}, {file, 8}).setPiece({file, 8}, Piece::WHT | piece)) !=
         legal.end()) {
@@ -70,10 +74,10 @@ bool doPromotion(Board& b, const std::string& mv, const std::unordered_set<Board
     }
   }
   else if (std::regex_search(mv, results, std::regex("^([a-h])x([a-h])8=([n,b,r,q])$"))) {
-    int     file1 = fileToX(*(results[1].first));
-    int     file2 = fileToX(*(results[2].first));
-    uint8_t piece = charToPiece(*(results[3].first));
-    Board   b2    = b;
+    int      file1 = fileToX(*(results[1].first));
+    int      file2 = fileToX(*(results[2].first));
+    uint8_t  piece = charToPiece(*(results[3].first));
+    Position b2    = b;
     if (legal.find(
           b2.move({file1, 7}, {file2, 8}).setPiece({file2, 8}, Piece::WHT | piece)) !=
         legal.end()) {
@@ -84,10 +88,10 @@ bool doPromotion(Board& b, const std::string& mv, const std::unordered_set<Board
   return false;
 }
 
-bool doMove(Board& b, std::string mv)
+bool doMove(Position& b, std::string mv)
 {
-  static std::vector<Board>        sLegalVec;
-  static std::unordered_set<Board> sLegalSet;
+  static std::vector<Position>        sLegalVec;
+  static std::unordered_set<Position> sLegalSet;
   // Generate the set of legal moves.
   sLegalVec.clear();
   b.genMoves(sLegalVec, Piece::WHT);
@@ -123,7 +127,7 @@ bool doMove(Board& b, std::string mv)
     auto match = std::find_if(
       sLegalVec.begin(),
       sLegalVec.end(),
-      [piece, pos = glm::ivec2 {file, rank}, dis, disCoordI](const Board& b) {
+      [piece, pos = glm::ivec2 {file, rank}, dis, disCoordI](const Position& b) {
         uint8_t pc         = b.piece(pos);
         bool    pieceMatch = Piece::color(pc) == Piece::color(piece) &&
                           Piece::type(pc) == Piece::type(piece);
@@ -257,7 +261,7 @@ void move(int argc, const char** argv)
     return;
   }
   std::string mv = parsed.value()["move"].as<std::string>();
-  doMove(currentBoard(), mv);
+  doMove(currentPosition(), mv);
   view::update();
 }
 
@@ -269,7 +273,7 @@ void loadFen(int argc, const char** argv)
                                      {{"fenstr", "The FEN string"}});
   auto        parsed = parseOptions(argc, argv, opts);
   std::string fen    = parsed.value()["fenstr"].as<std::string>();
-  currentState()     = State::fromFen(fen);
+  currentPosition()  = Position::fromFen(fen);
   view::update();
 }
 

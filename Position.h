@@ -31,13 +31,13 @@ struct Piece
   static uint8_t type(uint8_t piece);
 };
 
-class Board
+class Position
 {
 public:
   template<bool IsConst>
   class IteratorT
   {
-    using BoardRef = std::conditional_t<IsConst, const Board&, Board&>;
+    using BoardRef = std::conditional_t<IsConst, const Position&, Position&>;
 
   public:
     using PtrType   = std::conditional_t<IsConst, const uint8_t*, uint8_t*>;
@@ -86,30 +86,32 @@ public:
   using Iterator      = IteratorT<false>;
   using ConstIterator = IteratorT<true>;
 
-  Board();
-  Board(const Board& other);
-  bool           operator==(const Board& other) const;
-  bool           operator!=(const Board& other) const;
-  uint8_t&       piece(glm::ivec2 pos);
-  uint8_t        piece(glm::ivec2 pos) const;
-  uint8_t*       ptr(glm::ivec2 pos);
-  const uint8_t* ptr(glm::ivec2 pos) const;
-  glm::ivec2     first() const;
-  glm::ivec2     next(glm::ivec2 pos) const;
-  glm::ivec2     last() const;
-  Board&         move(glm::ivec2 from, glm::ivec2 to);
-  Board&         setMask(glm::ivec2 pos, uint8_t mask);
-  Board&         clearMask(glm::ivec2 pos, uint8_t mask);
-  Board&         setPiece(glm::ivec2 pos, uint8_t pc);
-  Board&         clearEnpassant();
-  void           genMoves(std::vector<Board>& dst, uint8_t turn) const;
-  Iterator       begin();
-  ConstIterator  begin() const;
-  Iterator       end();
-  ConstIterator  end() const;
-  void           clear();
-  size_t         zobristHash() const;
-  bool           inCheck(uint8_t color) const;
+  Position();
+  Position(const Position& other);
+  bool            operator==(const Position& other) const;
+  bool            operator!=(const Position& other) const;
+  uint8_t&        piece(glm::ivec2 pos);
+  uint8_t         piece(glm::ivec2 pos) const;
+  uint8_t*        ptr(glm::ivec2 pos);
+  const uint8_t*  ptr(glm::ivec2 pos) const;
+  glm::ivec2      first() const;
+  glm::ivec2      next(glm::ivec2 pos) const;
+  glm::ivec2      last() const;
+  Position&       move(glm::ivec2 from, glm::ivec2 to);
+  Position&       setMask(glm::ivec2 pos, uint8_t mask);
+  Position&       clearMask(glm::ivec2 pos, uint8_t mask);
+  Position&       setPiece(glm::ivec2 pos, uint8_t pc);
+  Position&       clearEnpassant();
+  void            genMoves(std::vector<Position>& dst, uint8_t turn) const;
+  Iterator        begin();
+  ConstIterator   begin() const;
+  Iterator        end();
+  ConstIterator   end() const;
+  void            clear();
+  size_t          zobristHash() const;
+  bool            inCheck(uint8_t color) const;
+  std::string     fen() const;
+  static Position fromFen(const std::string& fen);
 
 private:
   union
@@ -117,42 +119,34 @@ private:
     std::array<uint8_t, 64> mPieces;
     std::array<uint64_t, 8> mRows;
   };
-};
-
-struct State
-{
-  Board   mBoard;
-  uint8_t mTurn      = Piece::WHT;
-  int     mHalfMoves = 0;
+  int     mHalfMoves = 1;
   int     mFullMoves = 0;
-
-  static State fromFen(const std::string& fen);
+  uint8_t mTurn      = Piece::WHT;
 };
 
-Board& currentBoard();
-State& currentState();
-int    fileToX(char file);
-int    rankToY(char rank);
+Position& currentPosition();
+int       fileToX(char file);
+int       rankToY(char rank);
 
 }  // namespace potato
 
 namespace std {
 
 template<>
-struct hash<potato::Board>
+struct hash<potato::Position>
 {
-  size_t operator()(const potato::Board& b) const noexcept { return b.zobristHash(); }
+  size_t operator()(const potato::Position& b) const noexcept { return b.zobristHash(); }
 };
 
-ostream& operator<<(ostream& os, const potato::Board& b);
+ostream& operator<<(ostream& os, const potato::Position& b);
 
 template<bool IsConst>
-struct iterator_traits<potato::Board::IteratorT<IsConst>>
+struct iterator_traits<potato::Position::IteratorT<IsConst>>
 {
   using iterator_type     = uint8_t;
   using iterator_category = std::forward_iterator_tag;
   using value_type        = uint8_t;
-  using pointer           = typename potato::Board::IteratorT<IsConst>::PtrType;
+  using pointer           = typename potato::Position::IteratorT<IsConst>::PtrType;
   using reference         = std::conditional_t<IsConst, const uint8_t&, uint8_t&>;
 };
 
