@@ -20,10 +20,25 @@ find_package(glew REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
-file(GLOB POTATO_SRC "*.cpp")
-add_executable(potato ${POTATO_SRC})
-target_link_libraries(potato PRIVATE
+add_library(potatolib
+  "Board.cpp"
+  "State.cpp"
+  "Util.cpp"
+  "Zobrist.cpp"
+)
+target_link_libraries(potatolib PUBLIC
   glm::glm
+)
+target_include_directories(potatolib PRIVATE "./")
+
+add_executable(potato
+  "Command.cpp"
+  "GLUtil.cpp"
+  "Main.cpp"
+  "View.cpp"
+)
+target_link_libraries(potato PRIVATE
+  potatolib
   GLEW::GLEW
   glfw
   spdlog::spdlog
@@ -42,3 +57,14 @@ add_custom_command(TARGET potato
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/*.glsl ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+# Unit tests
+find_package(Catch2 CONFIG REQUIRED)
+file(GLOB MASH_SRC "./tests/*.cpp")
+add_executable(mash ${MASH_SRC})
+target_include_directories(mash PRIVATE "./")
+target_link_libraries(mash PRIVATE potatolib Catch2::Catch2 Catch2::Catch2WithMain)
+
+include(CTest)
+include(Catch)
+catch_discover_tests(mash)

@@ -53,7 +53,7 @@ public:
 
     DerefType operator*() { return mBoard.piece(mPos); }
 
-    PtrType operator->() { return &(mBoard.piece(mPos)); }
+    PtrType operator->() { return mBoard.ptr(mPos); }
 
     bool operator==(const IteratorT<IsConst>& other) const
     {
@@ -88,7 +88,9 @@ public:
   bool           operator==(const Board& other) const;
   bool           operator!=(const Board& other) const;
   uint8_t&       piece(glm::ivec2 pos);
-  const uint8_t& piece(glm::ivec2 pos) const;
+  uint8_t        piece(glm::ivec2 pos) const;
+  uint8_t*       ptr(glm::ivec2 pos);
+  const uint8_t* ptr(glm::ivec2 pos) const;
   glm::ivec2     first() const;
   glm::ivec2     next(glm::ivec2 pos) const;
   glm::ivec2     last() const;

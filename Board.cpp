@@ -96,9 +96,19 @@ uint8_t& Board::piece(glm::ivec2 pos)
   return mPieces[pos.y * 8 + pos.x];
 }
 
-const uint8_t& Board::piece(glm::ivec2 pos) const
+uint8_t Board::piece(glm::ivec2 pos) const
 {
   return mPieces[pos.y * 8 + pos.x];
+}
+
+uint8_t* Board::ptr(glm::ivec2 pos)
+{
+  return &(mPieces[pos.y * 8 + pos.x]);
+}
+
+const uint8_t* Board::ptr(glm::ivec2 pos) const
+{
+  return &(mPieces[pos.y * 8 + pos.x]);
 }
 
 glm::ivec2 Board::first() const
