@@ -53,7 +53,7 @@ public:
 
     DerefType operator*() { return mBoard.piece(mPos); }
 
-    PtrType operator->() { return mBoard.mPieces(mPos); }
+    PtrType operator->() { return &(mBoard.piece(mPos)); }
 
     bool operator==(const IteratorT<IsConst>& other) const
     {
