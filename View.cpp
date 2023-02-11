@@ -436,15 +436,17 @@ void loop()
   try {
     glfwMakeContextCurrent(sWindow);
     while (!glfwWindowShouldClose(sWindow)) {
-      acquireLock();
       glfwPollEvents();
       glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       sView->draw();
       glfwSwapBuffers(sWindow);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      acquireLock();
+      if (sClosed) {
+        break;
+      }
     }
-    stop();
   }
   catch (const std::exception& e) {
     gl::logger().critical("Fatal error: {}", e.what());
@@ -500,9 +502,11 @@ void stop()
   if (sClosed) {
     return;
   }
+  pause();
   if (!glfwWindowShouldClose(sWindow)) {
     glfwSetWindowShouldClose(sWindow, GLFW_TRUE);  // Force close the window.
   }
+  resume();
   gl::logger().info("Closing window...\n");
   if (sWindow) {
     glfwDestroyWindow(sWindow);
