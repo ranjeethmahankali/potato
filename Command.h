@@ -10,7 +10,7 @@ spdlog::logger& logger();
 
 void init();
 
-void run(std::string::iterator begin, std::string::iterator end);
+void run(const std::string& cmd);
 
 }  // namespace command
 

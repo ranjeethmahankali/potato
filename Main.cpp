@@ -23,7 +23,7 @@ static void gameLoop()
       running = false;
       continue;
     }
-    command::run(input.begin(), input.end());
+    command::run(input);
   }
 }
 
@@ -38,6 +38,8 @@ static void play()
 
 int main(int argc, char** argv)
 {
+  // State s =
+  //   State::fromFen("r1bqk2r/ppp2ppp/2n2n2/4p3/4p3/2P2NP1/PPP2PBP/R1BQ1RK1 w kq - 0 8");
   play();
   return 0;
 }

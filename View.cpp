@@ -303,7 +303,7 @@ BoardView::BoardView(const Board& b)
   auto                       dst        = mVBuf.data();
   for (int y = 0; y < 8; ++y) {
     for (int x = 0; x < 8; ++x) {
-      glm::vec3             color = ((x + y) % 2) ? White : Black;
+      glm::vec3             color = ((x + y) % 2) ? Black : White;
       std::array<Vertex, 4> quad;
       for (int vi = 0; vi < 4; ++vi) {
         glm::vec3 pos(quadVertex({x, y}, vi), BoardDepth);

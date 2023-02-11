@@ -1,3 +1,4 @@
+#include <ArgVSplit.h>
 #include <Board.h>
 #include <Command.h>
 #include <View.h>
@@ -32,54 +33,6 @@ bool doCastle(Board& b, const std::string& mv, const std::unordered_set<Board>& 
     }
   }
   return false;
-}
-
-static int fileToX(char file)
-{
-  switch (file) {
-  case 'a':
-    return 0;
-  case 'b':
-    return 1;
-  case 'c':
-    return 2;
-  case 'd':
-    return 3;
-  case 'e':
-    return 4;
-  case 'f':
-    return 5;
-  case 'g':
-    return 6;
-  case 'h':
-    return 7;
-  default:
-    return -1;
-  }
-}
-
-static int rankToY(char rank)
-{
-  switch (rank) {
-  case '1':
-    return 7;
-  case '2':
-    return 6;
-  case '3':
-    return 5;
-  case '4':
-    return 4;
-  case '5':
-    return 3;
-  case '6':
-    return 2;
-  case '7':
-    return 1;
-  case '8':
-    return 0;
-  default:
-    return -1;
-  }
 }
 
 static uint8_t charToPiece(char c)
@@ -149,9 +102,11 @@ bool doMove(Board& b, std::string mv)
   if (doCastle(b, mv, sLegalSet)) {
     return true;
   }
-  std::regex  pattern("^([p,n,b,r,q,k]{0,1})([a-h,1-8]{0,1})(x{0,1})([a-h])([1-8])$");
   std::smatch results;
-  if (std::regex_search(mv, results, pattern)) {
+  if (std::regex_search(
+        mv,
+        results,
+        std::regex("^([p,n,b,r,q,k]{0,1})([a-h,1-8]{0,1})(x{0,1})([a-h])([1-8])$"))) {
     uint8_t piece =
       Piece::WHT | charToPiece(results[1].length() == 0 ? 'p' : *(results[1].first));
     char disambiguation = results[2].length() == 0 ? 0 : *(results[2].first);
@@ -190,7 +145,7 @@ bool doMove(Board& b, std::string mv)
 
 namespace command {
 
-using CmdFnPtr = void (*)(int, char**);
+using CmdFnPtr = void (*)(int, const char**);
 
 spdlog::logger& logger()
 {
@@ -204,34 +159,21 @@ static std::unordered_map<std::string_view, CmdFnPtr>& cmdFuncMap()
   return sCommandFnMap;
 }
 
-void run(std::string::iterator begin, std::string::iterator end)
+void run(const std::string& cmd)
 {
-  static std::vector<char*> sArgV;
-  sArgV.clear();
-  for (auto it = begin; it != end; it++) {
-    char& c = *it;
-    if (c == ' ') {
-      c = '\0';
-    }
-    else if (it == begin || *(it - 1) == '\0') {
-      sArgV.push_back(&c);
-    }
-  }
-  if (sArgV.empty()) {
-    // No command received.
-    return;
-  }
-  auto match = cmdFuncMap().find(sArgV[0]);
+  argv_split parser("");
+  parser.parse(cmd);
+  const char** argv  = parser.argv();
+  int          argc  = int(parser.getArguments().size());
+  auto         match = cmdFuncMap().find(argv[0]);
   if (match == cmdFuncMap().end()) {
     // If no command is specified, we expect a move.
-    std::string newCmd = "move ";
-    std::copy(begin, end, std::back_inserter(newCmd));
-    run(newCmd.begin(), newCmd.end());
+    run("move " + cmd);
     return;
   }
 
   try {
-    match->second(int(sArgV.size()), sArgV.data());
+    match->second(argc, argv);
   }
   catch (const std::exception& e) {
     logger().error("\n{}", e.what());
@@ -287,7 +229,7 @@ cxxopts::Options optionsWithPosnArgs(const std::string_view&               name,
 }
 
 std::optional<cxxopts::ParseResult> parseOptions(int               argc,
-                                                 char**            argv,
+                                                 const char**      argv,
                                                  cxxopts::Options& opts)
 {
   auto parsed = opts.parse(argc, argv);
@@ -300,7 +242,7 @@ std::optional<cxxopts::ParseResult> parseOptions(int               argc,
 
 namespace funcs {
 
-void move(int argc, char** argv)
+void move(int argc, const char** argv)
 {
   static auto opts =
     optionsWithPosnArgs<std::string>("move",
@@ -319,11 +261,24 @@ void move(int argc, char** argv)
   view::update();
 }
 
+void loadFen(int argc, const char** argv)
+{
+  static auto opts =
+    optionsWithPosnArgs<std::string>("fen",
+                                     "Loads the board from the given FEN notation.",
+                                     {{"fenstr", "The FEN string"}});
+  auto        parsed = parseOptions(argc, argv, opts);
+  std::string fen    = parsed.value()["fenstr"].as<std::string>();
+  currentState()     = State::fromFen(fen);
+  view::update();
+}
+
 }  // namespace funcs
 
 void init()
 {
   cmdFuncMap().emplace("move", funcs::move);
+  cmdFuncMap().emplace("fen", funcs::loadFen);
 }
 
 }  // namespace command

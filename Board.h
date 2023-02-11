@@ -102,6 +102,7 @@ public:
   ConstIterator  begin() const;
   Iterator       end();
   ConstIterator  end() const;
+  void           clear();
   size_t         zobristHash() const;
 
 private:
@@ -112,7 +113,20 @@ private:
   };
 };
 
+struct State
+{
+  Board   mBoard;
+  uint8_t mTurn      = Piece::WHT;
+  int     mHalfMoves = 0;
+  int     mFullMoves = 0;
+
+  static State fromFen(const std::string& fen);
+};
+
 Board& currentBoard();
+State& currentState();
+int    fileToX(char file);
+int    rankToY(char rank);
 
 }  // namespace potato
 
