@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <array>
 #include <glm/glm.hpp>
+#include <iterator>
 #include <ostream>
 #include <vector>
 
@@ -75,6 +76,8 @@ public:
       return copy;
     }
 
+    glm::ivec2 pos() const { return mPos; }
+
   private:
     glm::ivec2 mPos;
     BoardRef   mBoard;
@@ -106,6 +109,7 @@ public:
   ConstIterator  end() const;
   void           clear();
   size_t         zobristHash() const;
+  bool           inCheck(uint8_t color) const;
 
 private:
   union
@@ -141,4 +145,15 @@ struct hash<potato::Board>
 };
 
 ostream& operator<<(ostream& os, const potato::Board& b);
+
+template<bool IsConst>
+struct iterator_traits<potato::Board::IteratorT<IsConst>>
+{
+  using iterator_type     = uint8_t;
+  using iterator_category = std::forward_iterator_tag;
+  using value_type        = uint8_t;
+  using pointer           = typename potato::Board::IteratorT<IsConst>::PtrType;
+  using reference         = std::conditional_t<IsConst, const uint8_t&, uint8_t&>;
+};
+
 }  // namespace std

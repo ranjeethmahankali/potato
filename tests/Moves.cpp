@@ -6,8 +6,8 @@ using namespace potato;
 
 TEST_CASE("Moves from the start", "[moves][starting]")
 {
-  static constexpr size_t                     NMoves         = 2;
-  static constexpr std::array<size_t, NMoves> sExpectedMoves = {{20, 400}};
+  static constexpr size_t                     NMoves         = 3;
+  static constexpr std::array<size_t, NMoves> sExpectedMoves = {{20, 400, 8902}};
   std::vector<Board>                          src(1);
   std::vector<Board>                          dst;
   std::array<size_t, NMoves>                  steps;

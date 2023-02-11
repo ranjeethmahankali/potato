@@ -576,6 +576,17 @@ void Board::clear()
   std::fill(mRows.begin(), mRows.end(), uint64_t(0));
 }
 
+bool Board::inCheck(uint8_t color) const
+{
+  auto match = std::find_if(begin(), end(), [color](uint8_t pc) {
+    return Piece::color(pc) == color && Piece::type(pc) == Piece::KNG;
+  });
+  if (match != end()) {
+    return isAttacked(*this, match.pos(), color);
+  }
+  return false;
+}
+
 Board& currentBoard()
 {
   return currentState().mBoard;
