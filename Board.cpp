@@ -202,8 +202,9 @@ static void mvBlkPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
   // Capture left
   if (from.x > 0) {
-    to = {from.x - 1, from.y + 1};
-    if (b.piece(to)) {
+    to           = {from.x - 1, from.y + 1};
+    uint8_t topc = b.piece(to);
+    if (topc && Piece::color(topc) == Piece::WHT) {
       auto& b2 = dst.emplace_back(b).move(from, to);
       if (to.y == 7) {  // Handle promotion
         b2.piece(to) = Piece::BLK | Piece::QEN;
@@ -215,8 +216,9 @@ static void mvBlkPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
   // Capture right
   if (from.x < 7) {
-    to = {from.x + 1, from.y + 1};
-    if (b.piece(to)) {
+    to           = {from.x + 1, from.y + 1};
+    uint8_t topc = b.piece(to);
+    if (topc && Piece::color(topc) == Piece::WHT) {
       auto& b2 = dst.emplace_back(b).move(from, to);
       if (to.y == 7) {  // Handle promotion
         b2.piece(to) = Piece::BLK | Piece::QEN;
@@ -270,8 +272,9 @@ static void mvWhtPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
   // Capture left
   if (from.x > 0) {
-    to = {from.x - 1, from.y - 1};
-    if (b.piece(to)) {
+    to           = {from.x - 1, from.y - 1};
+    uint8_t topc = b.piece(to);
+    if (topc && Piece::color(topc) == Piece::BLK) {
       auto& b2 = dst.emplace_back(b).move(from, to);
       if (to.y == 0) {  // Handle promotion
         b2.piece(to) = Piece::WHT | Piece::QEN;
@@ -283,8 +286,9 @@ static void mvWhtPwn(const Board& b, glm::ivec2 from, std::vector<Board>& dst)
   }
   // Capture right
   if (from.x < 7) {
-    to = {from.x + 1, from.y - 1};
-    if (b.piece(to)) {
+    to           = {from.x + 1, from.y - 1};
+    uint8_t topc = b.piece(to);
+    if (topc && Piece::color(topc) == Piece::BLK) {
       auto& b2 = dst.emplace_back(b).move(from, to);
       if (to.y == 0) {  // Handle promotion
         b2.piece(to) = Piece::WHT | Piece::QEN;
