@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <Position.h>
 #include <linux/limits.h>
 #include <unistd.h>
 

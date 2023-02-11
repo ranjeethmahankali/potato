@@ -1,6 +1,9 @@
 #include <Util.h>
 #include <View.h>
+#include <chrono>
+#include <condition_variable>
 #include <fstream>
+#include <memory>
 
 namespace potato {
 static constexpr uint32_t AtlasWidth  = 768;
@@ -129,7 +132,7 @@ void VertexBuffer::alloc()
   GL_CALL(glBindVertexArray(0));
 }
 
-const Atlas& Atlas::get()
+Atlas& Atlas::get()
 {
   static Atlas sAtlas;
   return sAtlas;
@@ -150,9 +153,17 @@ Atlas::Atlas()
 
 Atlas::~Atlas()
 {
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-  // Unbind texture.
-  deleteGLTexture();
+  free();
+}
+
+void Atlas::free()
+{
+  if (mGLTextureId) {
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
+    // Unbind texture.
+    deleteGLTexture();
+    mGLTextureId = 0;
+  }
 }
 
 void Atlas::initGLTexture()
@@ -221,42 +232,38 @@ static void checkShaderLinking(uint32_t progId)
     glGetProgramInfoLog(progId, 1024, NULL, infoLog);
     gl::logger().error("Error linking shader program:\n{}", infoLog);
   }
-};
+}
 
-Shader::Shader()
+void Shader::init()
 {
+  uint32_t vsId = 0;
+  uint32_t fsId = 0;
   // Compile vertex shader.
   {
     std::string vsrc = textFromFile(absPath("vshader.glsl"));
-    mVertShaderId    = glCreateShader(GL_VERTEX_SHADER);
+    vsId             = glCreateShader(GL_VERTEX_SHADER);
     const char* cstr = vsrc.c_str();
-    GL_CALL(glShaderSource(mVertShaderId, 1, &cstr, nullptr));
-    GL_CALL(glCompileShader(mVertShaderId));
-    checkShaderCompilation(mVertShaderId, GL_VERTEX_SHADER);
+    GL_CALL(glShaderSource(vsId, 1, &cstr, nullptr));
+    GL_CALL(glCompileShader(vsId));
+    checkShaderCompilation(vsId, GL_VERTEX_SHADER);
   }
   // Compile fragment shader.
   {
     std::string fsrc = textFromFile(absPath("fshader.glsl"));
-    mFragShaderId    = glCreateShader(GL_FRAGMENT_SHADER);
+    fsId             = glCreateShader(GL_FRAGMENT_SHADER);
     const char* cstr = fsrc.c_str();
-    GL_CALL(glShaderSource(mFragShaderId, 1, &cstr, nullptr));
-    GL_CALL(glCompileShader(mFragShaderId));
-    checkShaderCompilation(mFragShaderId, GL_FRAGMENT_SHADER);
+    GL_CALL(glShaderSource(fsId, 1, &cstr, nullptr));
+    GL_CALL(glCompileShader(fsId));
+    checkShaderCompilation(fsId, GL_FRAGMENT_SHADER);
   }
   // Link
   mProgramId = glCreateProgram();
-  GL_CALL(glAttachShader(mProgramId, mVertShaderId));
-  GL_CALL(glAttachShader(mProgramId, mFragShaderId));
+  GL_CALL(glAttachShader(mProgramId, vsId));
+  GL_CALL(glAttachShader(mProgramId, fsId));
   GL_CALL(glLinkProgram(mProgramId));
   checkShaderLinking(mProgramId);
-  GL_CALL(glDeleteShader(mVertShaderId));
-  GL_CALL(glDeleteShader(mFragShaderId));
-}
-
-const Shader& Shader::get()
-{
-  static Shader sShader = Shader();
-  return sShader;
+  GL_CALL(glDeleteShader(vsId));
+  GL_CALL(glDeleteShader(fsId));
 }
 
 void Shader::use() const
@@ -264,9 +271,17 @@ void Shader::use() const
   GL_CALL(glUseProgram(mProgramId));
 }
 
+void Shader::free()
+{
+  if (mProgramId) {
+    GL_CALL(glDeleteProgram(mProgramId));
+    mProgramId = 0;
+  }
+}
+
 Shader::~Shader()
 {
-  GL_CALL(glDeleteProgram(mProgramId));
+  free();
 }
 
 static glm::vec2 quadVertex(glm::ivec2 qpos, int vertexIdx)
@@ -280,7 +295,7 @@ static glm::vec2 quadVertex(glm::ivec2 qpos, int vertexIdx)
          glm::vec2 {1.f, 1.f};
 }
 
-BoardView::BoardView(const Board& b)
+BoardView::BoardView(const Position& b)
 {
   static constexpr glm::vec3 Black      = glm::vec3(0.15f, 0.35f, 0.15f);
   static constexpr glm::vec3 White      = glm::vec3(0.75f);
@@ -288,7 +303,7 @@ BoardView::BoardView(const Board& b)
   auto                       dst        = mVBuf.data();
   for (int y = 0; y < 8; ++y) {
     for (int x = 0; x < 8; ++x) {
-      glm::vec3             color = ((x + y) % 2) ? White : Black;
+      glm::vec3             color = ((x + y) % 2) ? Black : White;
       std::array<Vertex, 4> quad;
       for (int vi = 0; vi < 4; ++vi) {
         glm::vec3 pos(quadVertex({x, y}, vi), BoardDepth);
@@ -305,7 +320,7 @@ BoardView::BoardView(const Board& b)
   update(b);
 }
 
-void BoardView::update(const Board& b)
+void BoardView::update(const Position& b)
 {
   static constexpr size_t PieceOffset = 64 * 6;
   auto                    dst         = mVBuf.data() + PieceOffset;
@@ -340,4 +355,168 @@ void BoardView::draw() const
   GL_CALL(glDrawArrays(GL_TRIANGLES, 0, mVBuf.size()));
 }
 
+void BoardView::free()
+{
+  mVBuf.free();
+}
+
+namespace view {
+static bool                       sPaused = false;
+static GLFWwindow*                sWindow = nullptr;
+static std::unique_ptr<BoardView> sView;
+static std::mutex                 sMutex = std::mutex();
+static std::condition_variable    sCV    = std::condition_variable();
+static std::thread                sThread;
+static Shader                     sShader = Shader();
+static bool                       sClosed = false;
+
+static void glfw_error_cb(int error, const char* desc)
+{
+  gl::logger().error("GLFW Error {}: {}", error, desc);
+}
+
+int initGL()
+{
+  glfwSetErrorCallback(glfw_error_cb);
+  if (!glfwInit()) {
+    gl::logger().error("Failed to initialize GLFW.");
+    return 1;
+  }
+  gl::logger().info("Initialized GLFW.");
+  // Window setup
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  std::string title = "Potato";
+  sWindow           = glfwCreateWindow(1024, 1024, title.c_str(), nullptr, nullptr);
+  if (sWindow == nullptr) {
+    return 1;
+  }
+  glfwMakeContextCurrent(sWindow);
+  glfwSwapInterval(0);
+  // OpenGL bindings
+  if (glewInit() != GLEW_OK) {
+    gl::logger().error("Failed to initialize OpenGL bindings.");
+    return 1;
+  }
+  gl::logger().info("OpenGL bindings are ready.");
+  // TODO: Mouse support
+  int W, H;
+  GL_CALL(glfwGetFramebufferSize(sWindow, &W, &H));
+  GL_CALL(glViewport(0, 0, W, H));
+  GL_CALL(glEnable(GL_DEPTH_TEST));
+  GL_CALL(glEnable(GL_BLEND));
+  GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  GL_CALL(glEnable(GL_LINE_SMOOTH));
+  GL_CALL(glEnable(GL_PROGRAM_POINT_SIZE));
+  GL_CALL(glPointSize(3.0f));
+  GL_CALL(glLineWidth(1.0f));
+  GL_CALL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+  return 0;
+}
+
+void pause()
+{
+  std::lock_guard<std::mutex> lock(sMutex);
+  sPaused = true;
+}
+
+void acquireLock()
+{
+  while (sPaused) {
+    std::unique_lock<std::mutex> lock(sMutex);
+    sCV.wait(lock);
+    lock.unlock();
+  }
+}
+
+void loop()
+{
+  try {
+    glfwMakeContextCurrent(sWindow);
+    while (!glfwWindowShouldClose(sWindow)) {
+      glfwPollEvents();
+      glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      sView->draw();
+      glfwSwapBuffers(sWindow);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      acquireLock();
+      if (sClosed) {
+        break;
+      }
+    }
+  }
+  catch (const std::exception& e) {
+    gl::logger().critical("Fatal error: {}", e.what());
+    return;
+  }
+}
+
+void start()
+{
+  try {
+    int err = 0;
+    if ((err = initGL())) {
+      gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
+      return;
+    }
+    sView = std::make_unique<BoardView>(Position());
+    sShader.init();
+    sShader.use();
+  }
+  catch (const std::exception& e) {
+    gl::logger().critical("Fatal error: {}", e.what());
+    return;
+  }
+  sThread = std::thread(loop);
+}
+
+void resume()
+{
+  std::lock_guard<std::mutex> lock(sMutex);
+  sPaused = false;
+  sCV.notify_one();
+}
+
+void update()
+{
+  pause();
+  sView->update(currentPosition());
+  resume();
+}
+
+void join()
+{
+  sThread.join();
+}
+
+bool closed()
+{
+  return sClosed;
+}
+
+void stop()
+{
+  if (sClosed) {
+    return;
+  }
+  pause();
+  if (!glfwWindowShouldClose(sWindow)) {
+    glfwSetWindowShouldClose(sWindow, GLFW_TRUE);  // Force close the window.
+  }
+  resume();
+  gl::logger().info("Closing window...\n");
+  if (sWindow) {
+    glfwDestroyWindow(sWindow);
+  }
+  sShader.free();
+  Atlas::get().free();
+  sView->free();
+  glfwTerminate();
+  sClosed = true;
+}
+
+}  // namespace view
 }  // namespace potato

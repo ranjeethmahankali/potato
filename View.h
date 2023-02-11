@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Board.h>
 #include <GLUtil.h>
+#include <Position.h>
 #include <glm/glm.hpp>
 
 namespace potato {
@@ -49,11 +49,11 @@ public:
    */
   void alloc();
 
+  void free();
+
 private:
   uint32_t mVAO = 0;
   uint32_t mVBO = 0;
-
-  void free();
 };
 
 void unbindTexture();
@@ -75,8 +75,9 @@ public:
   /**
    * @brief Get the singleton instance of the atlas.
    */
-  static const Atlas& get();
-  glm::vec4           textureCoords(uint8_t piece) const;
+  static Atlas& get();
+  glm::vec4     textureCoords(uint8_t piece) const;
+  void          free();
 
 private:
   Atlas();
@@ -93,27 +94,37 @@ private:
 class Shader
 {
 public:
-  static const Shader& get();
-  void                 use() const;
+  Shader() = default;
   ~Shader();
+  void init();
+  void use() const;
+  void free();
   Shader(const Shader&) = delete;
   Shader(Shader&&)      = delete;
 
 private:
-  Shader();
-  uint32_t mVertShaderId = 0;
-  uint32_t mFragShaderId = 0;
-  uint32_t mProgramId    = 0;
+  uint32_t mProgramId = 0;
 };
 
 struct BoardView
 {
-  explicit BoardView(const Board& b);
-  void update(const Board& board);
+  explicit BoardView(const Position& b);
+  void update(const Position& board);
   void draw() const;
+  void free();
 
 private:
   VertexBuffer mVBuf;
 };
+
+namespace view {
+
+void start();
+void update();
+void stop();
+void join();
+bool closed();
+
+}  // namespace view
 
 }  // namespace potato
