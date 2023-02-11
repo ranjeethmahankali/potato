@@ -6,6 +6,8 @@
 #include <iostream>
 #include <thread>
 
+#include <Util.h>
+
 using namespace potato;
 
 static void gameLoop()
@@ -25,13 +27,17 @@ static void gameLoop()
   }
 }
 
-int main(int argc, char** argv)
+static void play()
 {
   command::init();
-  Board b;
   view::start();
   gameLoop();
   view::stop();
   view::join();
+}
+
+int main(int argc, char** argv)
+{
+  play();
   return 0;
 }

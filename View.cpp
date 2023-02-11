@@ -478,10 +478,10 @@ void resume()
   sCV.notify_one();
 }
 
-void set(const Board& b)
+void update()
 {
   pause();
-  sView->update(b);
+  sView->update(currentBoard());
   resume();
 }
 

@@ -81,6 +81,16 @@ Board::Board(const Board& other)
   clearEnpassant();
 }
 
+bool Board::operator==(const Board& other) const
+{
+  return mRows == other.mRows;
+}
+
+bool Board::operator!=(const Board& other) const
+{
+  return !(*this == other);
+}
+
 uint8_t& Board::piece(glm::ivec2 pos)
 {
   return mPieces[pos.y * 8 + pos.x];
@@ -111,6 +121,7 @@ glm::ivec2 Board::next(glm::ivec2 pos) const
           return pos;
         }
       }
+      pos.x = 0;
     }
   }
   return last();
@@ -548,6 +559,12 @@ Board::ConstIterator Board::begin() const
 Board::ConstIterator Board::end() const
 {
   return Board::ConstIterator(*this, last());
+}
+
+Board& currentBoard()
+{
+  static Board sBoard;
+  return sBoard;
 }
 
 }  // namespace potato

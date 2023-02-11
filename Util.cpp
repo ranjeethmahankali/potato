@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <Board.h>
 #include <linux/limits.h>
 #include <unistd.h>
 

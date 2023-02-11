@@ -85,6 +85,8 @@ public:
 
   Board();
   Board(const Board& other);
+  bool           operator==(const Board& other) const;
+  bool           operator!=(const Board& other) const;
   uint8_t&       piece(glm::ivec2 pos);
   const uint8_t& piece(glm::ivec2 pos) const;
   glm::ivec2     first() const;
@@ -100,6 +102,7 @@ public:
   ConstIterator  begin() const;
   Iterator       end();
   ConstIterator  end() const;
+  size_t         zobristHash() const;
 
 private:
   union
@@ -109,8 +112,17 @@ private:
   };
 };
 
+Board& currentBoard();
+
 }  // namespace potato
 
 namespace std {
+
+template<>
+struct hash<potato::Board>
+{
+  size_t operator()(const potato::Board& b) const noexcept { return b.zobristHash(); }
+};
+
 ostream& operator<<(ostream& os, const potato::Board& b);
-}
+}  // namespace std

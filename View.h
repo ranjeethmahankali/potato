@@ -120,7 +120,7 @@ private:
 namespace view {
 
 void start();
-void set(const Board& b);
+void update();
 void stop();
 void join();
 bool closed();
