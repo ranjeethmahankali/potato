@@ -1,3 +1,4 @@
+#include <Position.h>
 #include <Util.h>
 #include <View.h>
 #include <chrono>
@@ -28,38 +29,35 @@ static Texture& texture()
 static std::array<glm::vec4, 256> generateTextureCoords()
 {
   std::array<glm::vec4, 256> coords;
-  for (int i = 0; i < 256; ++i) {
-    uint8_t pc = uint8_t(i);
-    pc &= ~(Piece::ENPASSANT | Piece::CASTLE);
-    uint8_t    type  = Piece::type(pc);
-    uint8_t    color = Piece::color(pc);
-    glm::ivec2 pos   = {-1, -1};
-    switch (type) {
-    case Piece::PWN:
+  for (int i = 0; i < NUniquePieces; ++i) {
+    Piece      pc  = Piece(i);
+    glm::ivec2 pos = {-1, -1};
+    switch (type(pc)) {
+    case PieceType::PWN:
       pos.x = 0;
       break;
-    case Piece::HRS:
+    case PieceType::HRS:
       pos.x = 1;
       break;
-    case Piece::BSH:
+    case PieceType::BSH:
       pos.x = 2;
       break;
-    case Piece::ROK:
+    case PieceType::ROK:
       pos.x = 3;
       break;
-    case Piece::QEN:
+    case PieceType::QEN:
       pos.x = 4;
       break;
-    case Piece::KNG:
+    case PieceType::KNG:
       pos.x = 5;
       break;
     }
 
-    switch (color) {
-    case Piece::WHT:
+    switch (color(pc)) {
+    case Color::WHT:
       pos.y = 0;
       break;
-    case Piece::BLK:
+    case Color::BLK:
       pos.y = 1;
       break;
     }

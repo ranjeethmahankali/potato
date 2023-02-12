@@ -3,11 +3,11 @@
 #include <iostream>
 
 namespace potato {
-using ZobristTable = std::array<size_t, NPieceTypes * 64>;
+using ZobristTable = std::array<size_t, NUniquePieces * 64>;
 
 static ZobristTable generateTable()
 {
-  std::array<size_t, NPieceTypes * 64> table;
+  std::array<size_t, NUniquePieces * 64> table;
   for (size_t pc = 0; pc < 18; ++pc) {
     for (size_t pos = 0; pos < 64; ++pos) {
       table[pc * 64 + pos] = size_t(std::rand()) | (size_t(std::rand()) << 32);

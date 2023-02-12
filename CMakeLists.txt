@@ -59,8 +59,7 @@ add_custom_command(TARGET potato
 
 # Unit tests
 find_package(Catch2 CONFIG REQUIRED)
-file(GLOB MASH_SRC "./tests/*.cpp")
-add_executable(mash ${MASH_SRC})
+add_executable(mash "Tests.cpp")
 target_include_directories(mash PRIVATE "./")
 target_link_libraries(mash PRIVATE potatolib Catch2::Catch2 Catch2::Catch2WithMain)
 

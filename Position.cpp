@@ -50,7 +50,7 @@ PieceType type(Piece pc)
 
 char symbol(Piece pc)
 {
-  static constexpr std::array<char, NPieceTypes> sSymbols = {
+  static constexpr std::array<char, NUniquePieces> sSymbols = {
     {' ', 'p', 'n', 'b', 'r', 'q', 'k', ' ', ' ', 'P', 'N', 'B', 'R', 'Q', 'K'}};
   return sSymbols[pc];
 }
@@ -195,51 +195,51 @@ static void parsePlacement(const SubMatch& placement, Position& b)
     char c = *it;
     switch (c) {
     case 'p':
-      b.set(pos, B_PWN);
+      b.put(pos, B_PWN);
       shift();
       break;
     case 'n':
-      b.set(pos, B_HRS);
+      b.put(pos, B_HRS);
       shift();
       break;
     case 'b':
-      b.set(pos, B_BSH);
+      b.put(pos, B_BSH);
       shift();
       break;
     case 'r':
-      b.set(pos, B_ROK);
+      b.put(pos, B_ROK);
       shift();
       break;
     case 'q':
-      b.set(pos, B_QEN);
+      b.put(pos, B_QEN);
       shift();
       break;
     case 'k':
-      b.set(pos, B_KNG);
+      b.put(pos, B_KNG);
       shift();
       break;
     case 'P':
-      b.set(pos, W_PWN);
+      b.put(pos, W_PWN);
       shift();
       break;
     case 'N':
-      b.set(pos, W_HRS);
+      b.put(pos, W_HRS);
       shift();
       break;
     case 'B':
-      b.set(pos, W_BSH);
+      b.put(pos, W_BSH);
       shift();
       break;
     case 'R':
-      b.set(pos, W_ROK);
+      b.put(pos, W_ROK);
       shift();
       break;
     case 'Q':
-      b.set(pos, W_QEN);
+      b.put(pos, W_QEN);
       shift();
       break;
     case 'K':
-      b.set(pos, W_KNG);
+      b.put(pos, W_KNG);
       shift();
       break;
     case '/':

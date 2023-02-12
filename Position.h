@@ -54,7 +54,7 @@ enum Castle : uint8_t
   W_SHORT = 8,
 };
 
-static constexpr size_t NPieceTypes = 15;
+static constexpr size_t NUniquePieces = 15;
 
 Color     color(Piece pc);
 PieceType type(Piece pc);
@@ -77,14 +77,14 @@ public:
 private:
   void calcHash();
 
-  std::array<Piece, 64>             mPieces;
-  std::array<BitBoard, NPieceTypes> mBitBoards;
-  size_t                            mHash            = 0;
-  int                               mHalfMoves       = 0;
-  int                               mMoveCounter     = 1;
-  int                               mEnPassantSquare = -1;
-  Castle                            mCastlingRights  = Castle(0b1111);
-  Color                             mTurn            = Color::WHT;
+  std::array<Piece, 64>               mPieces;
+  std::array<BitBoard, NUniquePieces> mBitBoards;
+  size_t                              mHash            = 0;
+  int                                 mHalfMoves       = 0;
+  int                                 mMoveCounter     = 1;
+  int                                 mEnPassantSquare = -1;
+  Castle                              mCastlingRights  = Castle(0b1111);
+  Color                               mTurn            = Color::WHT;
 };
 
 Position& currentPosition();
