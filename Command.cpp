@@ -66,8 +66,7 @@ bool doPromotion(Position&                           b,
     int      file  = fileToX(*(results[1].first));
     uint8_t  piece = charToPiece(*(results[2].first));
     Position b2    = b;
-    if (legal.find(
-          b2.move({file, 7}, {file, 8}).setPiece({file, 8}, Piece::WHT | piece)) !=
+    if (legal.find(b2.move({file, 7}, {file, 8}).set({file, 8}, Piece::WHT | piece)) !=
         legal.end()) {
       b = b2;
       return true;
@@ -78,8 +77,7 @@ bool doPromotion(Position&                           b,
     int      file2 = fileToX(*(results[2].first));
     uint8_t  piece = charToPiece(*(results[3].first));
     Position b2    = b;
-    if (legal.find(
-          b2.move({file1, 7}, {file2, 8}).setPiece({file2, 8}, Piece::WHT | piece)) !=
+    if (legal.find(b2.move({file1, 7}, {file2, 8}).set({file2, 8}, Piece::WHT | piece)) !=
         legal.end()) {
       b = b2;
       return true;
