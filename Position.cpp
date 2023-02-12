@@ -86,16 +86,67 @@ Position::Position()
     .put(63, Piece::B_ROK);
 }
 
+using ZobristTable = std::array<uint64_t, NUniquePieces * 64>;
+
+static ZobristTable generateZobristTable()
+{
+  std::array<uint64_t, NUniquePieces * 64> table;
+  for (uint64_t pc = 0; pc < NUniquePieces; ++pc) {
+    for (uint64_t pos = 0; pos < 64; ++pos) {
+      table[pc * 64 + pos] = uint64_t(std::rand()) | (uint64_t(std::rand()) << 32);
+    }
+  }
+  return table;
+}
+
+static const ZobristTable& zobristTable()
+{
+  static const ZobristTable sTable = generateZobristTable();
+  return sTable;
+}
+
+void Position::calcHash()
+{
+  mHash = 0x70329434d587dc75;  // seed.
+  for (int i = 0; i < 64; ++i) {
+    mHash ^= zobristTable()[mPieces[i] * 64 + i];
+  }
+}
+
 Position& Position::put(int pos, Piece pc)
 {
-  Piece old = std::exchange(mPieces[pos], pc);
-  mBitBoards[pc] |= 1 << pos;
+  Piece    old  = std::exchange(mPieces[pos], pc);
+  BitBoard mask = 1 << pos;
+  mBitBoards[old] &= ~mask;
+  mBitBoards[pc] |= mask;
+  mHash ^= zobristTable()[old * 64 + pos] ^ zobristTable()[pc * 64 + pos];
   return *this;
 }
 
 Position& Position::put(glm::ivec2 pos, Piece pc)
 {
   return put(pos.y * 8 + pos.x, pc);
+}
+
+Position& Position::remove(int pos)
+{
+  return put(pos, Piece::NONE);
+}
+
+Position& Position::remove(glm::ivec2 pos)
+{
+  return put(pos, Piece::NONE);
+}
+
+Position& Position::move(int from, int to)
+{
+  Piece pc = mPieces[from];
+  return remove(from).put(to, pc);
+}
+
+Position& Position::move(glm::ivec2 from, glm::ivec2 to)
+{
+  return move(from.y * 8 + from.x, to.y * 8 + to.x);
 }
 
 Piece Position::piece(int pos) const

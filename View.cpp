@@ -52,7 +52,6 @@ static std::array<glm::vec4, 256> generateTextureCoords()
       pos.x = 5;
       break;
     }
-
     switch (color(pc)) {
     case Color::WHT:
       pos.y = 0;

@@ -66,6 +66,10 @@ public:
   Position();
   Position&       put(int pos, Piece pc);
   Position&       put(glm::ivec2 pos, Piece pc);
+  Position&       remove(int pos);
+  Position&       remove(glm::ivec2 pos);
+  Position&       move(int from, int to);
+  Position&       move(glm::ivec2 from, glm::ivec2 to);
   Piece           piece(int pos) const;
   Piece           piece(glm::ivec2 pos) const;
   void            clearEnpassant();

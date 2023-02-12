@@ -23,7 +23,6 @@ find_package(spdlog CONFIG REQUIRED)
 add_library(potatolib
   "Position.cpp"
   "Util.cpp"
-  "Zobrist.cpp"
 )
 target_link_libraries(potatolib PUBLIC
   glm::glm
