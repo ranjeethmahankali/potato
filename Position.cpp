@@ -82,8 +82,8 @@ Position::Position()
     .put(59, Piece::W_QEN)
     .put(60, Piece::W_KNG)
     .put(61, Piece::W_BSH)
-    .put(62, Piece::B_HRS)
-    .put(63, Piece::B_ROK);
+    .put(62, Piece::W_HRS)
+    .put(63, Piece::W_ROK);
 }
 
 using ZobristTable = std::array<uint64_t, NUniquePieces * 64>;

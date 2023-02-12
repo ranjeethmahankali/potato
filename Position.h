@@ -14,14 +14,14 @@ using BitBoard = uint64_t;
 enum Color : uint8_t
 {
   BLK = 0,
-  WHT = 1,
+  WHT = 8,  // Because third bit is used for color.
 };
 
 enum PieceType : uint8_t
 {
   PWN = 1,
-  BSH = 2,
-  HRS = 3,
+  HRS = 2,
+  BSH = 3,
   ROK = 4,
   QEN = 5,
   KNG = 6,
