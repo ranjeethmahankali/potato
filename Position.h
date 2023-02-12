@@ -76,6 +76,7 @@ public:
   void            clear();
   size_t          hash() const;
   std::string     fen() const;
+  bool            valid() const;
   static Position fromFen(const std::string& fen);
 
 private:

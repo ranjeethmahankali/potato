@@ -116,7 +116,7 @@ void Position::calcHash()
 Position& Position::put(int pos, Piece pc)
 {
   Piece    old  = std::exchange(mPieces[pos], pc);
-  BitBoard mask = 1 << pos;
+  BitBoard mask = BitBoard(1) << pos;
   mBitBoards[old] &= ~mask;
   mBitBoards[pc] |= mask;
   mHash ^= zobristTable()[old * 64 + pos] ^ zobristTable()[pc * 64 + pos];
@@ -173,10 +173,11 @@ void Position::clear()
 {
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
   std::fill(mBitBoards.begin(), mBitBoards.end(), 0);
-  mHalfMoves       = 0;
-  mMoveCounter     = 1;
-  mEnPassantSquare = -1;
-  mTurn            = Color::WHT;
+  mBitBoards[Piece::NONE] = 0xffffffffffffffff;  // All squares contain the NONE piece.
+  mHalfMoves              = 0;
+  mMoveCounter            = 1;
+  mEnPassantSquare        = -1;
+  mTurn                   = Color::WHT;
   calcHash();
 }
 
@@ -432,6 +433,26 @@ std::string Position::fen() const
   {  // Castling
   }
   throw std::logic_error("Not Implemented.");
+}
+
+bool Position::valid() const
+{
+  std::array<int, NUniquePieces> counts;
+  std::fill(counts.begin(), counts.end(), 0);
+  for (Piece pc : mPieces) {
+    ++counts[pc];
+  }
+  if (counts[7] & counts[8]) {
+    return false;
+  }
+  for (size_t i = 0; i < NUniquePieces; ++i) {
+    Piece pc       = Piece(i);
+    int   expected = std::popcount(mBitBoards[pc]);
+    if (counts[pc] != expected) {
+      return false;
+    }
+  }
+  return true;
 }
 
 Position& currentPosition()
