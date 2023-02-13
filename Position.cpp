@@ -1,3 +1,4 @@
+#include <Move.h>
 #include <Position.h>
 #include <algorithm>
 #include <glm/fwd.hpp>
@@ -159,9 +160,23 @@ Piece Position::piece(glm::ivec2 pos) const
   return piece(pos.y * 8 + pos.x);
 }
 
-void Position::clearEnpassant()
+uint8_t Position::enpassantSq() const
 {
-  mEnPassantSquare = -1;
+  return mEnPassantSquare;
+}
+
+Castle Position::castlingRights() const
+{
+  return mCastlingRights;
+}
+
+void Position::setEnpassantSq(uint8_t enp)
+{
+  mEnPassantSquare = enp;
+}
+void Position::setCastlingRights(Castle c)
+{
+  mCastlingRights = c;
 }
 
 static inline bool isOnBoard(glm::ivec2 pos)
@@ -364,12 +379,12 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
   }
 }
 
-static void parseEnpassant(const SubMatch& enpassant, int& enp)
+static void parseEnpassant(const SubMatch& enpassant, uint8_t& enp)
 {
   if (enpassant.length() > 2 || enpassant.length() < 1) {
     throw std::logic_error("Invalid enpassant target square field in the fen string");
   }
-  enp = fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1));
+  enp = uint8_t(fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1)));
 }
 
 Position Position::fromFen(const std::string& fen)

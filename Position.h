@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <array>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <iterator>
 #include <ostream>
@@ -72,11 +73,14 @@ public:
   Position&       move(glm::ivec2 from, glm::ivec2 to);
   Piece           piece(int pos) const;
   Piece           piece(glm::ivec2 pos) const;
-  void            clearEnpassant();
+  uint8_t         enpassantSq() const;
+  Castle          castlingRights() const;
+  void            setEnpassantSq(uint8_t enp);
+  void            setCastlingRights(Castle c);
   void            clear();
   size_t          hash() const;
-  std::string     fen() const;
   bool            valid() const;
+  std::string     fen() const;
   static Position fromFen(const std::string& fen);
 
 private:
@@ -87,7 +91,7 @@ private:
   size_t                              mHash            = 0;
   int                                 mHalfMoves       = 0;
   int                                 mMoveCounter     = 1;
-  int                                 mEnPassantSquare = -1;
+  uint8_t                             mEnPassantSquare = UINT8_MAX;
   Castle                              mCastlingRights  = Castle(0b1111);
   Color                               mTurn            = Color::WHT;
 };
