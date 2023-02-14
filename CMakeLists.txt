@@ -23,6 +23,7 @@ find_package(spdlog CONFIG REQUIRED)
 add_library(potatolib
   "Position.cpp"
   "Util.cpp"
+  "Move.cpp"
 )
 target_link_libraries(potatolib PUBLIC
   glm::glm

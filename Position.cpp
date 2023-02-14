@@ -1,5 +1,4 @@
 #include <Move.h>
-#include <Position.h>
 #include <algorithm>
 #include <glm/fwd.hpp>
 #include <regex>

@@ -132,7 +132,6 @@ struct TMoveVariant
   using Type = std::variant<MoveTypes<Color::WHT>..., MoveTypes<Color::BLK>...>;
 };
 
-template<Color Player>
 struct Move  // Wraps all moves in a variant.
 {
 private:
@@ -145,20 +144,30 @@ private:
   VariantType mVar;
 
 public:
-  void commit(Position& p)
-  {
-    p.history().push({.mEnpassantSquare = p.enpassantSq()});
-    p.setEnpassantSq(-1);
-    p.history().push({.mCastlingRights = p.castlingRights()});
-    std::visit([&p](const auto& mv) { mv.commit(p); }, mVar);
-  }
-
-  void revert(Position& p)
-  {
-    std::visit([&p](const auto& mv) { mv.revert(p); }, mVar);
-    p.setCastlingRights(p.history().pop().mCastlingRights);
-    p.setEnpassantSq(p.history().pop().mEnpassantSquare);
-  }
+  void commit(Position& p);
+  void revert(Position& p);
 };
+
+struct MoveList
+{
+  MoveList();
+  const Move* begin() const;
+  const Move* end() const;
+  size_t      size() const;
+  void        clear();
+
+  void operator+=(const Move& mv);
+
+private:
+  static constexpr size_t MaxMoves = 256;
+  std::array<Move, 256>   mBuf;
+  Move*                   mEnd;
+};
+
+template<Color Player>
+void generateMoves(const Position& p, MoveList& moves)
+{
+  // TODO: Incomplete.
+}
 
 }  // namespace potato
