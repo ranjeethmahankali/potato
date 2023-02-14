@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <iterator>
 #include <ostream>
+#include <stack>
 #include <vector>
 
 namespace potato {
@@ -55,6 +56,21 @@ enum Castle : uint8_t
   W_SHORT = 8,
 };
 
+union HistoryData
+{
+  Piece  mPiece;
+  int    mEnpassantSquare;
+  Castle mCastlingRights;
+};
+
+struct History : public std::stack<HistoryData>
+{
+  HistoryData pop();
+
+private:
+  using std::stack<HistoryData>::top;
+};
+
 static constexpr size_t NUniquePieces = 15;
 
 Color     color(Piece pc);
@@ -73,14 +89,15 @@ public:
   Position&       move(glm::ivec2 from, glm::ivec2 to);
   Piece           piece(int pos) const;
   Piece           piece(glm::ivec2 pos) const;
-  uint8_t         enpassantSq() const;
+  int             enpassantSq() const;
+  void            setEnpassantSq(int enp);
   Castle          castlingRights() const;
-  void            setEnpassantSq(uint8_t enp);
   void            setCastlingRights(Castle c);
   void            clear();
   size_t          hash() const;
   bool            valid() const;
   std::string     fen() const;
+  History&        history();
   static Position fromFen(const std::string& fen);
 
 private:
@@ -88,10 +105,11 @@ private:
 
   std::array<Piece, 64>               mPieces;
   std::array<BitBoard, NUniquePieces> mBitBoards;
+  History                             mHistory;
   size_t                              mHash            = 0;
   int                                 mHalfMoves       = 0;
   int                                 mMoveCounter     = 1;
-  uint8_t                             mEnPassantSquare = UINT8_MAX;
+  int                                 mEnPassantSquare = -1;
   Castle                              mCastlingRights  = Castle(0b1111);
   Color                               mTurn            = Color::WHT;
 };

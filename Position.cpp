@@ -39,6 +39,13 @@ static constexpr std::array<glm::ivec2, 8> sKingSteps    = {{
      {-1, -1},
 }};
 
+HistoryData History::pop()
+{
+  HistoryData h = std::stack<HistoryData>::top();
+  std::stack<HistoryData>::pop();
+  return h;
+}
+
 Color color(Piece pc)
 {
   return Color(pc & 0b1000);
@@ -160,7 +167,7 @@ Piece Position::piece(glm::ivec2 pos) const
   return piece(pos.y * 8 + pos.x);
 }
 
-uint8_t Position::enpassantSq() const
+int Position::enpassantSq() const
 {
   return mEnPassantSquare;
 }
@@ -170,7 +177,7 @@ Castle Position::castlingRights() const
   return mCastlingRights;
 }
 
-void Position::setEnpassantSq(uint8_t enp)
+void Position::setEnpassantSq(int enp)
 {
   mEnPassantSquare = enp;
 }
@@ -379,12 +386,12 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
   }
 }
 
-static void parseEnpassant(const SubMatch& enpassant, uint8_t& enp)
+static void parseEnpassant(const SubMatch& enpassant, int& enp)
 {
   if (enpassant.length() > 2 || enpassant.length() < 1) {
     throw std::logic_error("Invalid enpassant target square field in the fen string");
   }
-  enp = uint8_t(fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1)));
+  enp = fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1));
 }
 
 Position Position::fromFen(const std::string& fen)
@@ -448,6 +455,11 @@ std::string Position::fen() const
   {  // Castling
   }
   throw std::logic_error("Not Implemented.");
+}
+
+History& Position::history()
+{
+  return mHistory;
 }
 
 bool Position::valid() const
