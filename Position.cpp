@@ -58,7 +58,7 @@ PieceType type(Piece pc)
 char symbol(Piece pc)
 {
   static constexpr std::array<char, NUniquePieces> sSymbols = {
-    {' ', 'p', 'n', 'b', 'r', 'q', 'k', ' ', ' ', 'P', 'N', 'B', 'R', 'Q', 'K'}};
+    {'_', 'p', 'n', 'b', 'r', 'q', 'k', '_', '_', 'P', 'N', 'B', 'R', 'Q', 'K'}};
   return sSymbols[pc];
 }
 
@@ -493,16 +493,16 @@ namespace std {
 ostream& operator<<(ostream& os, const potato::Position& b)
 {
   // Copy the symbols.
-  std::string str;
-  str.reserve(72);
   glm::ivec2 pos;
   for (pos.y = 0; pos.y < 8; ++pos.y) {
+    os << "|";
     for (pos.x = 0; pos.x < 8; ++pos.x) {
-      str.push_back(potato::symbol(b.piece(pos)));
+      os << potato::symbol(b.piece(pos)) << "|";
     }
-    str.push_back('\n');
+    if (pos.y < 7) {
+      os << '\n';
+    }
   }
-  os << str;
   return os;
 }
 
