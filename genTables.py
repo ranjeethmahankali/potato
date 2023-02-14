@@ -3,7 +3,7 @@
 BitBoard = "BitBoard"
 
 # These only need to be enabled while debugging.
-ENABLE_COMMENTS = True
+ENABLE_COMMENTS = False
 
 
 class Board:
