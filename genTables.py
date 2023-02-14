@@ -1,4 +1,5 @@
 """Generate the C++ lookup tables."""
+from datetime import datetime
 
 BitBoard = "BitBoard"
 
@@ -63,7 +64,7 @@ def printBoardArray(boards, name):
         f'{comments[i] if ENABLE_COMMENTS else empty}{b.hex()}'
         for b, i in zip(boards, range(len(boards)))
     ]))
-    print("}}}};")
+    print("}};")
 
 
 def isOnBoard(x, y):
@@ -151,8 +152,13 @@ def table(mapfn):
 
 
 if __name__ == "__main__":
+    print("/*\nThis file is auto generated. DO NOT EDIT.\nGenerated at: "
+          f"{datetime.now()}.\n*/\n")
     print('#pragma once\n')
+    print('#include <array>\n')
+    print('#include <stdint.h>\n')
     print('namespace potato {\n')
+    print('using BitBoard = uint64_t;\n')
     printBoardArray(table(fileMask), "sFiles")
     print("")
     printBoardArray(table(rankMask), "sRanks")

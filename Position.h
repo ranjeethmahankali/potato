@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Tables.h>
 #include <stdint.h>
 #include <array>
 #include <cstdint>
@@ -10,8 +11,6 @@
 #include <vector>
 
 namespace potato {
-
-using BitBoard = uint64_t;
 
 enum Color : uint8_t
 {
