@@ -1,10 +1,10 @@
 CONFIG=${1-build}
 TARGET=${2-all}
-NUM_THREADS=${3-12}
+NUM_THREADS=${3-$(grep -c ^processor /proc/cpuinfo)}
+
 mkdir -p $CONFIG
 cd $CONFIG
 echo "Building target '${TARGET}' in ${CONFIG} configuration"
-
 # This is the default version.
 if [ $CONFIG == "build" ]; then
     echo "Generating compilation commands..."
