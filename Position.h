@@ -77,6 +77,9 @@ union HistoryData
   Piece  mPiece;
   int    mEnpassantSquare;
   Castle mCastlingRights;
+
+  bool operator==(const HistoryData& other) const;
+  bool operator!=(const HistoryData& other) const;
 };
 
 struct History : public std::stack<HistoryData>
@@ -109,12 +112,18 @@ public:
   void            setEnpassantSq(int enp);
   Castle          castlingRights() const;
   void            setCastlingRights(Castle c);
+  Color           turn() const;
+  void            setTurn(Color turn);
   void            clear();
   size_t          hash() const;
   bool            valid() const;
   std::string     fen() const;
   History&        history();
+  static Position empty();
   static Position fromFen(const std::string& fen);
+
+  bool operator==(const Position& other) const;
+  bool operator!=(const Position& other) const;
 
 private:
   void calcHash();

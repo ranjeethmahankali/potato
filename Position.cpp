@@ -5,6 +5,15 @@
 
 namespace potato {
 
+bool HistoryData::operator==(const HistoryData& other) const
+{
+  return std::memcmp(this, &other, sizeof(HistoryData)) == 0;
+}
+bool HistoryData::operator!=(const HistoryData& other) const
+{
+  return !(*this == other);
+}
+
 HistoryData History::pop()
 {
   HistoryData h = std::stack<HistoryData>::top();
@@ -165,6 +174,16 @@ void Position::setCastlingRights(Castle c)
   mCastlingRights = c;
 }
 
+Color Position::turn() const
+{
+  return mTurn;
+}
+
+void Position::setTurn(Color turn)
+{
+  mTurn = turn;
+}
+
 void Position::clear()
 {
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
@@ -180,6 +199,27 @@ void Position::clear()
 size_t Position::hash() const
 {
   return mHash;
+}
+
+bool Position::operator==(const Position& other) const
+{
+  return mPieces == other.mPieces && mBitBoards == other.mBitBoards &&
+         mHistory == other.mHistory && mHash == other.mHash &&
+         mHalfMoves == other.mHalfMoves && mMoveCounter == other.mMoveCounter &&
+         mEnPassantSquare == other.mEnPassantSquare &&
+         mCastlingRights == other.mCastlingRights && mTurn == other.mTurn;
+}
+
+bool Position::operator!=(const Position& other) const
+{
+  return !(*this == other);
+}
+
+Position Position::empty()
+{
+  Position p;
+  p.clear();
+  return p;
 }
 
 int fileToX(char file)
@@ -351,6 +391,7 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
     {'k', Castle::B_SHORT},
     {'q', Castle::B_LONG},
   }};
+  rights                                                                = Castle(0);
   for (auto it = castling.first; it != castling.second; ++it) {
     char c     = *it;
     auto match = std::find_if(sCastlingPos.begin(), sCastlingPos.end(), [c](auto tup) {
@@ -365,7 +406,12 @@ static void parseEnpassant(const SubMatch& enpassant, int& enp)
   if (enpassant.length() > 2 || enpassant.length() < 1) {
     throw std::logic_error("Invalid enpassant target square field in the fen string");
   }
-  enp = fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1));
+  if (enpassant == "-") {
+    enp = -1;
+  }
+  else {
+    enp = fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1));
+  }
 }
 
 Position Position::fromFen(const std::string& fen)
