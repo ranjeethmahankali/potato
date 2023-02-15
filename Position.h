@@ -139,6 +139,7 @@ private:
   Color                               mTurn            = Color::WHT;
 };
 
+void      writeBoard(BitBoard b, std::ostream& os);
 Position& currentPosition();
 int       fileToX(char file);
 int       rankToY(char rank);

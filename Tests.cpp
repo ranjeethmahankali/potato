@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
-#include <Position.h>
+#include <Move.h>
+#include <bit>
 #include <catch.hpp>
 #include <catch2/catch_all.hpp>
 #include <iostream>
@@ -59,11 +60,67 @@ TEST_CASE("Loading from FEN string", "[fen][parsing]")
   REQUIRE(pfen == expected);
 }
 
-TEST_CASE("Slider attack squares", "[slider][attack][bitboards]")
+TEST_CASE("Slider move bitboards", "[slider][moves][bitboards]")
 {
   Position p = Position::fromFen("Q1n5/5nb1/6KP/1P2P1p1/1R2p3/q7/b1k4p/1N6 w - - 0 1");
-  // TODO: Incomplete.
-  REQUIRE(false);
+  BitBoard black    = getAllPieces<BLK>(p);
+  BitBoard white    = getAllPieces<WHT>(p);
+  BitBoard notblack = ~black;
+  BitBoard notwhite = ~white;
+  BitBoard all      = black | white;
+
+  SECTION("Black Bishop")
+  {
+    BitBoard                                 bbsh           = p.board(B_BSH);
+    static constexpr std::array<BitBoard, 2> sExpectedMoves = {
+      {278921376, 144117404414246912}};
+    REQUIRE(std::popcount(bbsh) == 2);
+    std::array<BitBoard, 2> actual;
+    BitBoard*               dst = actual.data();
+    // writeBoard(bbsh, std::cout); // Print to check manually
+    while (bbsh) {
+      BitBoard moves = bishopMoves(pop(bbsh), all) & notblack;
+      *(dst++)       = moves;
+      // writeBoard(moves, std::cout); // Print to check manually
+    }
+    REQUIRE(sExpectedMoves == actual);
+  }
+
+  SECTION("White Rook")
+  {
+    auto wrok = p.board(W_ROK);
+    REQUIRE(std::popcount(wrok) == 1);
+    // writeBoard(wrok, std::cout); // To check manually
+    while (wrok) {
+      auto moves = rookMoves(pop(wrok), all) & notwhite;
+      // writeBoard(moves, std::cout); // To check manually
+      REQUIRE(moves == 565273530728448);
+    }
+  }
+
+  SECTION("White Queen")
+  {
+    auto wqen = p.board(W_QEN);
+    REQUIRE(std::popcount(wqen) == 1);
+    // writeBoard(wqen, std::cout);  // To check manually
+    while (wqen) {
+      auto moves = queenMoves(pop(wqen), all) & notwhite;
+      // writeBoard(moves, std::cout);  // To check manually
+      REQUIRE(moves == 1172677395206);
+    }
+  }
+
+  SECTION("Black Queen")
+  {
+    auto bqen = p.board(B_QEN);
+    REQUIRE(std::popcount(bqen) == 1);
+    // writeBoard(bqen, std::cout);  // To check manually
+    while (bqen) {
+      auto moves = queenMoves(pop(bqen), all) & notblack;
+      // writeBoard(moves, std::cout);  // To check manually
+      REQUIRE(moves == 289072614960333057);
+    }
+  }
 }
 
 TEST_CASE("Zobrist Hash Updates", "[zobrist][hash][incremental][update]")

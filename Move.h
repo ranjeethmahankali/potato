@@ -1,9 +1,9 @@
 #pragma once
 
 #include <Position.h>
+#include <Tables.h>
 #include <stdint.h>
 #include <variant>
-#include "Tables.h"
 
 namespace potato {
 
@@ -199,6 +199,11 @@ constexpr BitBoard shift(BitBoard b)
   }
 }
 
+int      pop(BitBoard& b);
+BitBoard bishopMoves(int sq, BitBoard blockers);
+BitBoard rookMoves(int sq, BitBoard blockers);
+BitBoard queenMoves(int sq, BitBoard blockers);
+
 template<Color Player>
 BitBoard getAllPieces(const Position& p)
 {
@@ -226,6 +231,10 @@ template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
   static constexpr Color Enemy = Player == BLK ? WHT : BLK;
+  BitBoard               self  = getAllPieces<Player>(p);
+  BitBoard               enemy = getAllPieces<Enemy>(p);
+  BitBoard               all   = self | enemy;
+
   // TODO: Incomplete.
 }
 

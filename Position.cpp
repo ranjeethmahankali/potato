@@ -507,6 +507,20 @@ Position& currentPosition()
   return sState;
 }
 
+void writeBoard(BitBoard b, std::ostream& os)
+{
+  for (int pos = 0; pos < 64; ++pos) {
+    if (pos % 8 == 0) {
+      if (pos) {
+        os << '\n';
+      }
+      os << '|';
+    }
+    os << ((b & (BitBoard(1) << pos)) ? 'X' : '_') << '|';
+  }
+  os << std::endl << std::endl;
+}
+
 }  // namespace potato
 
 namespace std {
