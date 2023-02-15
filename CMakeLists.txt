@@ -46,16 +46,31 @@ target_link_libraries(potato PRIVATE
 target_include_directories(potato PRIVATE "./")
 
 # Generate the texture
-add_custom_command(TARGET potato
-  POST_BUILD
+add_custom_command( # This command regenerates the texture from svg by running a python script
+  OUTPUT # These files are the outputs of this command
+  # When some target needs these files, cmake will run this command to generate them.
+  ${CMAKE_CURRENT_BINARY_DIR}/pieces.png ${CMAKE_CURRENT_BINARY_DIR}/pieces.dat
   COMMAND python3 ${PROJECT_SOURCE_DIR}/genTexture.py ${CMAKE_BUILD_TYPE}
+  DEPENDS # This command needs to be rerun whenever the svg is modified.
+  ${PROJECT_SOURCE_DIR}/pieces.svg
 )
+add_custom_target(generate_texture
+  DEPENDS # Building this target will cause the following files to be generated.
+  ${CMAKE_CURRENT_BINARY_DIR}/pieces.png ${CMAKE_CURRENT_BINARY_DIR}/pieces.dat
+)
+add_dependencies(potato generate_texture)
 
 # Copy the shaders to bin dir
-add_custom_command(TARGET potato
-  POST_BUILD
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/vshader.glsl ${CMAKE_CURRENT_BINARY_DIR}/fshader.glsl
   COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/*.glsl ${CMAKE_CURRENT_BINARY_DIR}
+  DEPENDS ${PROJECT_SOURCE_DIR}/vshader.glsl ${PROJECT_SOURCE_DIR}/fshader.glsl
+  COMMENT "Copying shaders..."
 )
+add_custom_target(copy_shaders
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/vshader.glsl ${CMAKE_CURRENT_BINARY_DIR}/fshader.glsl
+)
+add_dependencies(potato copy_shaders)
 
 # Unit tests
 find_package(Catch2 CONFIG REQUIRED)
