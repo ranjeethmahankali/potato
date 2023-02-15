@@ -33,14 +33,14 @@ Position::Position()
 {
   clear();
   // Black pieces.
-  put(0, Piece::B_ROK)
-    .put(1, Piece::B_HRS)
-    .put(2, Piece::B_BSH)
-    .put(3, Piece::B_QEN)
-    .put(4, Piece::B_KNG)
-    .put(5, Piece::B_BSH)
-    .put(6, Piece::B_HRS)
-    .put(7, Piece::B_ROK);
+  put({{{0, Piece::B_ROK},
+        {1, Piece::B_HRS},
+        {2, Piece::B_BSH},
+        {3, Piece::B_QEN},
+        {4, Piece::B_KNG},
+        {5, Piece::B_BSH},
+        {6, Piece::B_HRS},
+        {7, Piece::B_ROK}}});
   // Black pawns
   for (int i = 8; i < 16; ++i) {
     put(i, Piece::B_PWN);
@@ -50,14 +50,14 @@ Position::Position()
     put(i, Piece::W_PWN);
   }
   // White pieces
-  put(56, Piece::W_ROK)
-    .put(57, Piece::W_HRS)
-    .put(58, Piece::W_BSH)
-    .put(59, Piece::W_QEN)
-    .put(60, Piece::W_KNG)
-    .put(61, Piece::W_BSH)
-    .put(62, Piece::W_HRS)
-    .put(63, Piece::W_ROK);
+  put({{{56, Piece::W_ROK},
+        {57, Piece::W_HRS},
+        {58, Piece::W_BSH},
+        {59, Piece::W_QEN},
+        {60, Piece::W_KNG},
+        {61, Piece::W_BSH},
+        {62, Piece::W_HRS},
+        {63, Piece::W_ROK}}});
 }
 
 using ZobristTable = std::array<uint64_t, NUniquePieces * 64>;
@@ -94,6 +94,14 @@ Position& Position::put(int pos, Piece pc)
   mBitBoards[old] &= ~mask;
   mBitBoards[pc] |= mask;
   mHash ^= zobristTable()[old * 64 + pos] ^ zobristTable()[pc * 64 + pos];
+  return *this;
+}
+
+Position& Position::put(std::span<const std::pair<int, Piece>> pieces)
+{
+  for (auto [pos, pc] : pieces) {
+    put(pos, pc);
+  }
   return *this;
 }
 

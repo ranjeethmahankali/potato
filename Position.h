@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <iterator>
 #include <ostream>
+#include <span>
 #include <stack>
 #include <vector>
 
@@ -96,6 +97,7 @@ public:
   Position();
   Position&       put(int pos, Piece pc);
   Position&       put(glm::ivec2 pos, Piece pc);
+  Position&       put(std::span<const std::pair<int, Piece>> pieces);
   Position&       remove(int pos);
   Position&       remove(glm::ivec2 pos);
   Position&       move(int from, int to);

@@ -41,7 +41,7 @@ int main(int argc, char** argv)
 {
   currentPosition() =
     Position::fromFen("r1bqk2r/ppp2ppp/2n2n2/4p3/4p3/2P2NP1/PPP2PBP/R1BQ1RK1 w kq - 0 8");
-  std::cout << currentPosition() << std::endl;
-  // play();
+  // std::cout << currentPosition() << std::endl;
+  play();
   return 0;
 }
