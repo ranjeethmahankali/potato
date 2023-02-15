@@ -63,8 +63,8 @@ TEST_CASE("Loading from FEN string", "[fen][parsing]")
 TEST_CASE("Slider move bitboards", "[slider][moves][bitboards]")
 {
   Position p = Position::fromFen("Q1n5/5nb1/6KP/1P2P1p1/1R2p3/q7/b1k4p/1N6 w - - 0 1");
-  BitBoard black    = getAllPieces<BLK>(p);
-  BitBoard white    = getAllPieces<WHT>(p);
+  BitBoard black    = getAllBoards<BLK>(p);
+  BitBoard white    = getAllBoards<WHT>(p);
   BitBoard notblack = ~black;
   BitBoard notwhite = ~white;
   BitBoard all      = black | white;

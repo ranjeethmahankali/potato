@@ -99,7 +99,7 @@ void Position::calcHash()
 Position& Position::put(int pos, Piece pc)
 {
   Piece    old  = std::exchange(mPieces[pos], pc);
-  BitBoard mask = BitBoard(1) << pos;
+  BitBoard mask = OneHot[pos];
   mBitBoards[old] &= ~mask;
   mBitBoards[pc] |= mask;
   mHash ^= zobristTable()[old * 64 + pos] ^ zobristTable()[pc * 64 + pos];
@@ -516,7 +516,7 @@ void writeBoard(BitBoard b, std::ostream& os)
       }
       os << '|';
     }
-    os << ((b & (BitBoard(1) << pos)) ? 'X' : '_') << '|';
+    os << ((b & OneHot[pos]) ? 'X' : '_') << '|';
   }
   os << std::endl << std::endl;
 }

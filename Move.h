@@ -3,6 +3,7 @@
 #include <Position.h>
 #include <Tables.h>
 #include <stdint.h>
+#include <bit>
 #include <variant>
 
 namespace potato {
@@ -200,41 +201,52 @@ constexpr BitBoard shift(BitBoard b)
 }
 
 int      pop(BitBoard& b);
+int      lsb(BitBoard b);
 BitBoard bishopMoves(int sq, BitBoard blockers);
 BitBoard rookMoves(int sq, BitBoard blockers);
 BitBoard queenMoves(int sq, BitBoard blockers);
 
 template<Color Player>
-BitBoard getAllPieces(const Position& p)
+Piece makePiece(PieceType type)
 {
-  static constexpr uint8_t color = uint8_t(Player);
-  return p.board(Piece(color | PieceType::PWN)) | p.board(Piece(color | PieceType::HRS)) |
-         p.board(Piece(color | PieceType::BSH)) | p.board(Piece(color | PieceType::ROK)) |
-         p.board(Piece(color | PieceType::QEN)) | p.board(Piece(color | PieceType::KNG));
+  return Piece(uint8_t(Player) | type);
+}
+
+template<Color Player, PieceType... Types>
+BitBoard getBoards(const Position& p)
+{
+  return (p.board(makePiece<Player>(Types)) | ...);
 }
 
 template<Color Player>
-BitBoard getDiagSliders(const Position& p)
+BitBoard getAllBoards(const Position& p)
 {
-  static constexpr uint8_t color = uint8_t(Player);
-  return p.board(Piece(color | PieceType::BSH)) | p.board(Piece(color | PieceType::QEN));
-}
-
-template<Color Player>
-BitBoard getOrthoSliders(const Position& p)
-{
-  static constexpr uint8_t color = uint8_t(Player);
-  return p.board(Piece(color | PieceType::ROK)) | p.board(Piece(color | PieceType::QEN));
+  return getBoards<Player, PWN, HRS, BSH, ROK, QEN, KNG>(p);
 }
 
 template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
-  static constexpr Color Enemy = Player == BLK ? WHT : BLK;
-  BitBoard               self  = getAllPieces<Player>(p);
-  BitBoard               enemy = getAllPieces<Enemy>(p);
-  BitBoard               all   = self | enemy;
-
+  static constexpr Color Enemy    = Player == BLK ? WHT : BLK;
+  BitBoard               self     = getAllBoards<Player>(p);
+  BitBoard               notself  = ~self;
+  BitBoard               enemy    = getAllBoards<Enemy>(p);
+  BitBoard               all      = self | enemy;
+  BitBoard               ourKing  = p.board(makePiece<Player>(KNG));
+  BitBoard               pinned   = 0;
+  BitBoard               checkers = 0;
+  int                    kingPos  = lsb(ourKing);
+  {
+    // Diag sliders that are lined up with the king.
+    auto diags = bishopMoves(kingPos, enemy) & getBoards<Enemy, BSH, QEN>(p);
+    while (diags) {
+      auto line     = Between[pop(diags)][kingPos];
+      auto blockers = line & self;
+    }
+  }
+  {
+    auto krok = rookMoves(kingPos, enemy) & notself;
+  }
   // TODO: Incomplete.
 }
 

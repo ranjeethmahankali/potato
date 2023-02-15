@@ -1,13 +1,9 @@
 #include <Command.h>
 #include <GLUtil.h>
 #include <Position.h>
-#include <View.h>
-#include <chrono>
-#include <iostream>
-#include <thread>
-#include "Move.h"
-
 #include <Util.h>
+#include <View.h>
+#include <iostream>
 
 using namespace potato;
 

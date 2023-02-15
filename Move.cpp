@@ -51,8 +51,13 @@ void MoveList::operator+=(const Move& mv)
 int pop(BitBoard& b)
 {
   int shift = std::countr_zero(b);
-  b &= ~(BitBoard(1) << shift);
+  b &= ~OneHot[shift];
   return shift;
+}
+
+int lsb(BitBoard b)
+{
+  return std::countr_zero(b);
 }
 
 BitBoard reversed(BitBoard b)
@@ -67,11 +72,9 @@ BitBoard reversed(BitBoard b)
 BitBoard sliderMoves(int sq, BitBoard blockers, BitBoard mask)
 {
   // Use the hyperbola quintissence algorithm.
-  BitBoard pc     = BitBoard(1) << sq;
+  BitBoard pc     = OneHot[sq];
   BitBoard masked = blockers & mask;
-  return ((masked - 2 * pc) ^
-          reversed(reversed(masked) - 2 * (BitBoard(1) << (63 - sq)))) &
-         mask;
+  return ((masked - 2 * pc) ^ reversed(reversed(masked) - 2 * OneHot[63 - sq])) & mask;
 }
 
 BitBoard bishopMoves(int sq, BitBoard blockers)
