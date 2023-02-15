@@ -5,39 +5,6 @@
 
 namespace potato {
 
-static constexpr std::array<glm::ivec2, 8> sHorseMoves   = {{
-    {1, 2},
-    {2, 1},
-    {-1, 2},
-    {-2, 1},
-    {1, -2},
-    {2, -1},
-    {-1, -2},
-    {-2, -1},
-}};
-static constexpr std::array<glm::ivec2, 4> sDiagonalDirs = {{
-  {1, 1},
-  {-1, 1},
-  {1, -1},
-  {-1, -1},
-}};
-static constexpr std::array<glm::ivec2, 4> sAxialDirs    = {{
-     {1, 0},
-     {0, 1},
-     {-1, 0},
-     {0, -1},
-}};
-static constexpr std::array<glm::ivec2, 8> sKingSteps    = {{
-     {1, 0},
-     {0, 1},
-     {-1, 0},
-     {0, -1},
-     {1, 1},
-     {-1, 1},
-     {1, -1},
-     {-1, -1},
-}};
-
 HistoryData History::pop()
 {
   HistoryData h = std::stack<HistoryData>::top();
@@ -190,11 +157,6 @@ void Position::setCastlingRights(Castle c)
   mCastlingRights = c;
 }
 
-static inline bool isOnBoard(glm::ivec2 pos)
-{
-  return pos[0] > -1 && pos[1] > -1 && pos[0] < 8 && pos[1] < 8;
-}
-
 void Position::clear()
 {
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
@@ -263,91 +225,91 @@ int rankToY(char rank)
 using SubMatch = std::sub_match<std::string::const_iterator>;
 static void parsePlacement(const SubMatch& placement, Position& b)
 {
-  glm::ivec2 pos   = {0, 0};
-  auto       shift = [&pos](int offset = 1) {
-    int flat = pos.x + 8 * pos.y;
-    flat += offset;
-    pos = {flat % 8, flat / 8};
-  };
+  int pos = 0;
+  // auto       shift = [&pos](int offset = 1) {
+  //   int flat = pos.x + 8 * pos.y;
+  //   flat += offset;
+  //   pos = {flat % 8, flat / 8};
+  // };
   for (auto it = placement.first; it != placement.second; ++it) {
     char c = *it;
     switch (c) {
     case 'p':
       b.put(pos, B_PWN);
-      shift();
+      ++pos;
       break;
     case 'n':
       b.put(pos, B_HRS);
-      shift();
+      ++pos;
       break;
     case 'b':
       b.put(pos, B_BSH);
-      shift();
+      ++pos;
       break;
     case 'r':
       b.put(pos, B_ROK);
-      shift();
+      ++pos;
       break;
     case 'q':
       b.put(pos, B_QEN);
-      shift();
+      ++pos;
       break;
     case 'k':
       b.put(pos, B_KNG);
-      shift();
+      ++pos;
       break;
     case 'P':
       b.put(pos, W_PWN);
-      shift();
+      ++pos;
       break;
     case 'N':
       b.put(pos, W_HRS);
-      shift();
+      ++pos;
       break;
     case 'B':
       b.put(pos, W_BSH);
-      shift();
+      ++pos;
       break;
     case 'R':
       b.put(pos, W_ROK);
-      shift();
+      ++pos;
       break;
     case 'Q':
       b.put(pos, W_QEN);
-      shift();
+      ++pos;
       break;
     case 'K':
       b.put(pos, W_KNG);
-      shift();
+      ++pos;
       break;
     case '/':
-      if (pos.x != 0) {
+      if (pos % 8) {
         throw std::logic_error("Error when parsing the fen string");
       }
       break;
     case '1':
-      shift(1);
+      ++pos;
       break;
     case '2':
-      shift(2);
+      pos += 2;
       break;
     case '3':
-      shift(3);
+      pos += 3;
       break;
     case '4':
-      shift(4);
+      pos += 4;
       break;
     case '5':
-      shift(5);
+      pos += 5;
       break;
     case '6':
-      shift(6);
+      pos += 6;
       break;
     case '7':
-      shift(7);
+      pos += 7;
       break;
     case '8':
-      shift(8);
+      pos += 8;
       break;
     }
   }
@@ -428,8 +390,7 @@ std::string Position::fen() const
 {
   std::string out;
   {  // Placement
-    glm::ivec2 pos   = {0, 0};
-    int        empty = 0;
+    int empty = 0;
     for (size_t pi = 0; pi < mPieces.size(); ++pi) {
       Piece pc = mPieces[pi];
       if (pi % 8 == 0) {
@@ -497,16 +458,14 @@ Position& currentPosition()
 namespace std {
 ostream& operator<<(ostream& os, const potato::Position& b)
 {
-  // Copy the symbols.
-  glm::ivec2 pos;
-  for (pos.y = 0; pos.y < 8; ++pos.y) {
-    os << "|";
-    for (pos.x = 0; pos.x < 8; ++pos.x) {
-      os << potato::symbol(b.piece(pos)) << "|";
+  for (int pos = 0; pos < 64; ++pos) {
+    if (pos % 8 == 0) {
+      if (pos) {
+        os << '\n';
+      }
+      os << '|';
     }
-    if (pos.y < 7) {
-      os << '\n';
-    }
+    os << potato::symbol(b.piece(pos)) << '|';
   }
   return os;
 }
