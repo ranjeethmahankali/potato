@@ -171,6 +171,7 @@ if __name__ == "__main__":
     print("")
     printBoardArray(table(kingMovesMask), "sKingMoves")
     print('\n} // namespace potato')
+
     # print(rank(4))
     # print(file(4))
     # print(diagonal(4, 2))

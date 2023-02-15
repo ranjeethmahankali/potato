@@ -45,6 +45,20 @@ target_link_libraries(potato PRIVATE
 )
 target_include_directories(potato PRIVATE "./")
 
+# Generate lookup tables
+add_custom_command(
+  OUTPUT ${PROJECT_SOURCE_DIR}/Tables.h
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  COMMAND python3 genTables.py > Tables.h
+  DEPENDS ${PROJECT_SOURCE_DIR}/genTables.py
+  COMMENT "Generating lookup tables for moves..."
+)
+add_custom_target(
+  generate_lookup_tables
+  DEPENDS ${PROJECT_SOURCE_DIR}/Tables.h
+)
+add_dependencies(potatolib generate_lookup_tables)
+
 # Generate the texture
 add_custom_command( # This command regenerates the texture from svg by running a python script
   OUTPUT # These files are the outputs of this command
@@ -53,6 +67,7 @@ add_custom_command( # This command regenerates the texture from svg by running a
   COMMAND python3 ${PROJECT_SOURCE_DIR}/genTexture.py ${CMAKE_BUILD_TYPE}
   DEPENDS # This command needs to be rerun whenever the svg is modified.
   ${PROJECT_SOURCE_DIR}/pieces.svg
+  COMMENT "Generating texture for pieces..."
 )
 add_custom_target(generate_texture
   DEPENDS # Building this target will cause the following files to be generated.
