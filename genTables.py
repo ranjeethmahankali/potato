@@ -152,7 +152,8 @@ def table(mapfn):
 
 
 if __name__ == "__main__":
-    print("/*\nThis file is auto generated. DO NOT EDIT.\nGenerated at: "
+    print("/*\nThis file is auto generated.\n"
+          "DO NOT EDIT or track this file with git.\nGenerated at: "
           f"{datetime.now()}.\n*/\n")
     print('#pragma once\n')
     print('#include <array>\n')
@@ -171,10 +172,3 @@ if __name__ == "__main__":
     print("")
     printBoardArray(table(kingMovesMask), "sKingMoves")
     print('\n} // namespace potato')
-
-    # print(rank(4))
-    # print(file(4))
-    # print(diagonal(4, 2))
-    # print(diagonal(2, 4))
-    # print(antiDiagonal(6, 2))
-    # print(antiDiagonal(2, 2))
