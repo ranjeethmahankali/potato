@@ -12,6 +12,20 @@
 
 namespace potato {
 
+// clang-format off
+enum Square : int
+{
+  A8 =  0, B8, C8, D8, E8, F8, G8, H8,
+  A7 =  8, B7, C7, D7, E7, F7, G7, H7,
+  A6 = 16, B6, C6, D6, E6, F6, G6, H6,
+  A5 = 24, B5, C5, D5, E5, F5, G5, H5,
+  A4 = 32, B4, C4, D4, E4, F4, G4, H4,
+  A3 = 40, B3, C3, D3, E3, F3, G3, H3,
+  A2 = 48, B2, C2, D2, E2, F2, G2, H2,
+  A1 = 56, B1, C1, D1, E1, F1, G1, H1,
+};
+// clang-format on
+
 enum Color : uint8_t
 {
   BLK = 0,
@@ -47,6 +61,8 @@ enum Piece : uint8_t
   NONE = 0,
 };
 
+static constexpr size_t NUniquePieces = 15;
+
 enum Castle : uint8_t
 {
   B_LONG  = 1,
@@ -70,8 +86,6 @@ private:
   using std::stack<HistoryData>::top;
 };
 
-static constexpr size_t NUniquePieces = 15;
-
 Color     color(Piece pc);
 PieceType type(Piece pc);
 char      symbol(Piece pc);
@@ -88,6 +102,7 @@ public:
   Position&       move(glm::ivec2 from, glm::ivec2 to);
   Piece           piece(int pos) const;
   Piece           piece(glm::ivec2 pos) const;
+  BitBoard        board(Piece p) const;
   int             enpassantSq() const;
   void            setEnpassantSq(int enp);
   Castle          castlingRights() const;

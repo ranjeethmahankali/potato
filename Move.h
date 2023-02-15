@@ -3,19 +3,20 @@
 #include <Position.h>
 #include <stdint.h>
 #include <variant>
+#include "Tables.h"
 
 namespace potato {
 
 enum Direction : int
 {
-  SW = -9,
+  SW = -7,
   S  = -8,
-  SE = -7,
-  E  = 1,
-  NE = 9,
+  SE = -9,
+  E  = -1,
+  NE = 7,
   N  = 8,
-  NW = 7,
-  W  = -1
+  NW = 9,
+  W  = 1,
 };
 
 template<Direction dir, Color col>
@@ -155,8 +156,7 @@ struct MoveList
   const Move* end() const;
   size_t      size() const;
   void        clear();
-
-  void operator+=(const Move& mv);
+  void        operator+=(const Move& mv);
 
 private:
   static constexpr size_t MaxMoves = 256;
@@ -164,9 +164,68 @@ private:
   Move*                   mEnd;
 };
 
+static constexpr BitBoard NotAFile = ~File[0];
+static constexpr BitBoard NotHFile = ~File[7];
+
+template<Direction Dir>
+constexpr BitBoard shift(BitBoard b)
+{
+  if constexpr (Dir == SW) {
+    return b >> 7 & NotAFile;
+  }
+  else if constexpr (Dir == S) {
+    return b >> 8;
+  }
+  else if constexpr (Dir == SE) {
+    return b >> 9 & NotHFile;
+  }
+  else if constexpr (Dir == E) {
+    return b >> 1 & NotHFile;
+  }
+  else if constexpr (Dir == NE) {
+    return b << 7 & NotHFile;
+  }
+  else if constexpr (Dir == N) {
+    return b << 8;
+  }
+  else if constexpr (Dir == NW) {
+    return b << 9 & NotAFile;
+  }
+  else if constexpr (Dir == W) {
+    return b << 1 & NotAFile;
+  }
+  else {
+    return b;
+  }
+}
+
+template<Color Player>
+BitBoard getAllPieces(const Position& p)
+{
+  static constexpr uint8_t color = uint8_t(Player);
+  return p.board(Piece(color | PieceType::PWN)) | p.board(Piece(color | PieceType::HRS)) |
+         p.board(Piece(color | PieceType::BSH)) | p.board(Piece(color | PieceType::ROK)) |
+         p.board(Piece(color | PieceType::QEN)) | p.board(Piece(color | PieceType::KNG));
+}
+
+template<Color Player>
+BitBoard getDiagSliders(const Position& p)
+{
+  static constexpr uint8_t color = uint8_t(Player);
+  return p.board(Piece(color | PieceType::BSH)) | p.board(Piece(color | PieceType::QEN));
+}
+
+template<Color Player>
+BitBoard getOrthoSliders(const Position& p)
+{
+  static constexpr uint8_t color = uint8_t(Player);
+  return p.board(Piece(color | PieceType::ROK)) | p.board(Piece(color | PieceType::QEN));
+}
+
 template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
+  static constexpr Color Enemy = Player == BLK ? WHT : BLK;
   // TODO: Incomplete.
 }
 

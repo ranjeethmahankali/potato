@@ -166,6 +166,11 @@ Piece Position::piece(glm::ivec2 pos) const
   return piece(pos.y * 8 + pos.x);
 }
 
+BitBoard Position::board(Piece p) const
+{
+  return mBitBoards[p];
+}
+
 int Position::enpassantSq() const
 {
   return mEnPassantSquare;
