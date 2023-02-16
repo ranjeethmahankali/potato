@@ -226,12 +226,6 @@ constexpr BitBoard shift(BitBoard b)
   }
 }
 
-template<Direction Dir>
-constexpr BitBoard dblshift(BitBoard b)
-{
-  return shift<Dir>(shift<Dir>(b));
-}
-
 int      pop(BitBoard& b);
 int      lsb(BitBoard b);
 BitBoard bishopMoves(int sq, BitBoard blockers);
@@ -276,18 +270,20 @@ BitBoard pawnCaptures(BitBoard b)
 template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
-  static constexpr Color Enemy        = Player == BLK ? WHT : BLK;
-  BitBoard               self         = getAllBoards<Player>(p);
-  BitBoard               notself      = ~self;
-  BitBoard               enemy        = getAllBoards<Enemy>(p);
-  BitBoard               notenemy     = ~enemy;
-  BitBoard               all          = self | enemy;
-  BitBoard               empty        = ~all;
-  BitBoard               ourKing      = getBoard<Player, KNG>(p);
-  BitBoard               otherKing    = getBoard<Enemy, KNG>(p);
-  int                    kingPos      = lsb(ourKing);
-  int                    otherKingPos = lsb(otherKing);
-  BitBoard               unsafe       = 0;
+  static constexpr Direction Up           = RelativeDir<N, Player>;
+  static constexpr BitBoard  HomePawnRank = Rank[RelativeRank<Player, 1> * 8];
+  static constexpr Color     Enemy        = Player == BLK ? WHT : BLK;
+  BitBoard                   self         = getAllBoards<Player>(p);
+  BitBoard                   notself      = ~self;
+  BitBoard                   enemy        = getAllBoards<Enemy>(p);
+  BitBoard                   notenemy     = ~enemy;
+  BitBoard                   all          = self | enemy;
+  BitBoard                   empty        = ~all;
+  BitBoard                   ourKing      = getBoard<Player, KNG>(p);
+  BitBoard                   otherKing    = getBoard<Enemy, KNG>(p);
+  int                        kingPos      = lsb(ourKing);
+  int                        otherKingPos = lsb(otherKing);
+  BitBoard                   unsafe       = 0;
   {  // Find all unsafe squares.
     unsafe =
       pawnCaptures<Enemy>(getBoard<Enemy, PWN>(p)) | (KingMoves[otherKingPos] & empty);
@@ -366,15 +362,16 @@ void generateMoves(const Position& p, MoveList& moves)
       }
     }
     // Single push pawn blocks.
-    auto blocked = shift<RelativeDir<N, Player>>(getBoard<Player, PWN>(p)) & line;
+    auto blocked = shift<Up>(getBoard<Player, PWN>(p)) & line;
     if (blocked) {
       int bpos = lsb(blocked);
-      moves += MvPiece<Player> {bpos - RelativeDir<N, Player>, bpos};
+      moves += MvPiece<Player> {bpos - Up, bpos};
     }
     // Double push pawn blocks.
-    blocked = dblshift<RelativeDir<N, Player>>(getBoard<Player, PWN>(p)) & line;
+    blocked =
+      shift<Up>(shift<Up>(HomePawnRank & (getBoard<Player, PWN>(p))) & empty) & line;
     if (blocked) {
-      moves += MvDoublePush<Player> {pop(blocked) - 2 * RelativeDir<N, Player>};
+      moves += MvDoublePush<Player> {pop(blocked) - 2 * Up};
     }
     // Knight captures and blocks.
     attackers = getBoard<Player, HRS>(p);
@@ -428,13 +425,39 @@ void generateMoves(const Position& p, MoveList& moves)
     auto pcs    = getBoard<Player, PWN>(p);
     auto pmoves =
       // pinned
-      (shift<RelativeDir<N, Player>>(pcs & pins) & empty & pins) |
+      (shift<Up>(pcs & pins) & empty & pins) |
       // unpinned
-      (shift<RelativeDir<N, Player>>(pcs & nopins) & empty);
+      (shift<Up>(pcs & nopins) & empty);
     while (pmoves) {
       int pos = pop(pmoves);
-      moves += MvPiece<Player> {pos - RelativeDir<N, Player>, pos};
+      moves += MvPiece<Player> {pos - Up, pos};
     }
+    // Pawn double push
+    pcs &= HomePawnRank;
+    pmoves =
+      // unpinned
+      (shift<Up>(shift<Up>(pcs & nopins) & empty) & empty) |
+      // pinned
+      (shift<Up>(shift<Up>(pcs & pins) & empty & pins) & empty & pins);
+    while (pmoves) {
+      int pos = pop(pmoves);
+      moves += MvDoublePush<Player> {pos - 2 * Up};
+    }
+    // TODO: Pawn captures.
+    // TODO: Pawn promotions.
+    // TODO: Pawn capture promotions.
+    // TODO: Enpassant.
+    // Pinned knights cannot be moved. Only try to move unpinned knights.
+    pcs = getBoard<Player, HRS>(p);
+    while (pcs) {
+      int pos = pop(pcs);
+      pmoves  = KnightMoves[pos] & notself;
+      while (pmoves) {
+        moves += MvPiece<Player> {pos, pop(pmoves)};
+      }
+    }
+    // TODO: Moves for pinned and unpinned sliders.
+    // TODO: Castling.
   }
   // TODO: Incomplete.
 }
