@@ -184,6 +184,19 @@ def kingMovesMask(x, y):
     return b
 
 
+def pawnCapturesMask(x, y, isWhite=False):
+    """Get a mask for pawn captures from a square."""
+    forward = -1 if isWhite else 1
+    b = Board()
+    if y == 7:
+        return b
+    if x > 0:
+        b.set(x - 1, y + forward)
+    if x < 7:
+        b.set(x + 1, y + forward)
+    return b
+
+
 def oneHot(x, y):
     """Get a board with a single bit set."""
     b = Board()
@@ -268,4 +281,10 @@ if __name__ == "__main__":
     printBoardArray(table(knightMovesMask), "KnightMoves")
     print("")
     printBoardArray(table(kingMovesMask), "KingMoves")
+    print("")
+    printBoardArray(table(lambda x, y: pawnCapturesMask(x, y, False)),
+                    "BlackPawnCaptures")
+    print("")
+    printBoardArray(table(lambda x, y: pawnCapturesMask(x, y, True)),
+                    "WhitePawnCaptures")
     print('\n} // namespace potato')

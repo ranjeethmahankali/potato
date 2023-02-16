@@ -7,38 +7,43 @@
 
 using namespace potato;
 
-// TEST_CASE("Moves from the start", "[moves][starting]")
-// {
-//   static constexpr size_t                     NMoves         = 3;
-//   static constexpr std::array<size_t, NMoves> sExpectedMoves = {{20, 400, 8902}};
-//   std::vector<Position>                       src(1);
-//   std::vector<Position>                       dst;
-//   std::vector<Position>                       temp;
-//   std::array<size_t, NMoves>                  steps;
-//   for (size_t i = 0; i < NMoves; ++i) {
-//     dst.clear();
-//     Color turn = (i % 2) ? Color::BLK : Color::WHT;
-//     for (const Position& b : src) {
-//       temp.clear();
-//       // if (i == 2) {
-//       //   std::cout << "here\n";
-//       // }
-//       // b.genMoves(temp, turn);
-//       if (i == 2) {
-//         size_t counter = 0;
-//         // for (const auto& b : temp) {
-//         //   std::cout << counter++ << std::endl;
-//         //   std::cout << b << std::endl;
-//         // }
-//         std::cout << temp.size() << std::endl;
-//       }
-//       // std::copy(temp.begin(), temp.end(), std::back_inserter(dst));
-//     }
-//     steps[i] = dst.size();
-//     std::swap(src, dst);
-//   }
-//   REQUIRE(steps == sExpectedMoves);
-// }
+TEST_CASE("Moves from the start", "[moves][starting]")
+{
+  Position p;
+  MoveList moves;
+  generateMoves<WHT>(p, moves);
+  // static constexpr size_t                     NMoves         = 3;
+  // static constexpr std::array<size_t, NMoves> sExpectedMoves = {{20, 400, 8902}};
+  // MoveList                                    src;
+  // MoveList                                    dst;
+  // std::vector<Position>                       src(1);
+  // std::vector<Position>                       dst;
+  // std::vector<Position>                       temp;
+  // std::array<size_t, NMoves>                  steps;
+  // for (size_t i = 0; i < NMoves; ++i) {
+  //   dst.clear();
+  //   Color turn = (i % 2) ? Color::BLK : Color::WHT;
+  //   for (const Position& b : src) {
+  //     temp.clear();
+  //     // if (i == 2) {
+  //     //   std::cout << "here\n";
+  //     // }
+  //     // b.genMoves(temp, turn);
+  //     if (i == 2) {
+  //       size_t counter = 0;
+  //       // for (const auto& b : temp) {
+  //       //   std::cout << counter++ << std::endl;
+  //       //   std::cout << b << std::endl;
+  //       // }
+  //       std::cout << temp.size() << std::endl;
+  //     }
+  //     // std::copy(temp.begin(), temp.end(), std::back_inserter(dst));
+  //   }
+  //   steps[i] = dst.size();
+  //   std::swap(src, dst);
+  // }
+  // REQUIRE(steps == sExpectedMoves);
+}
 
 TEST_CASE("Loading from FEN string", "[fen][parsing]")
 {

@@ -43,11 +43,6 @@ void MoveList::clear()
   mEnd = mBuf.data();
 }
 
-void MoveList::operator+=(const Move& mv)
-{
-  *(mEnd++) = mv;
-}
-
 int pop(BitBoard& b)
 {
   int shift = std::countr_zero(b);

@@ -43,7 +43,7 @@ struct MvPiece
   int mFrom;
   int mTo;
 
-  void commit(Position& p) const
+  void commit(Position& p)
   {
     p.history().push({.mPiece = p.piece(mTo)});
     p.move(mFrom, mTo);
@@ -69,6 +69,19 @@ struct MvEnpassant
     p.move(target + RelativeDir<N, Player>, mFrom)
       .put(target, Piece(uint8_t(Enemy) | PieceType::PWN));
   }
+};
+
+template<Color Player>
+struct MvDoublePush
+{
+  int mFrom;
+
+  void commit(Position& p)
+  {
+    p.move(mFrom, mFrom + 2 * RelativeDir<N, Player>);
+    p.setEnpassantSq(mFrom + 2 * RelativeDir<N, Player>);
+  }
+  void revert(Position& p) { p.move(mFrom + 2 * RelativeDir<N, Player>, mFrom); }
 };
 
 template<Color Player>
@@ -138,6 +151,7 @@ struct Move  // Wraps all moves in a variant.
 {
 private:
   using VariantType = typename TMoveVariant<MvPiece,
+                                            MvDoublePush,
                                             MvEnpassant,
                                             MvPromote,
                                             MvCapturePromote,
@@ -146,6 +160,12 @@ private:
   VariantType mVar;
 
 public:
+  Move() = default;
+  template<typename TMove>
+  explicit Move(const TMove m)
+      : mVar(m)
+  {}
+
   void commit(Position& p);
   void revert(Position& p);
 };
@@ -157,12 +177,18 @@ struct MoveList
   const Move* end() const;
   size_t      size() const;
   void        clear();
-  void        operator+=(const Move& mv);
 
 private:
   static constexpr size_t MaxMoves = 256;
   std::array<Move, 256>   mBuf;
   Move*                   mEnd;
+
+public:
+  template<typename TMove>
+  void operator+=(const TMove& mv)
+  {
+    *(mEnd++) = Move(mv);
+  }
 };
 
 static constexpr BitBoard NotAFile = ~File[0];
@@ -200,6 +226,12 @@ constexpr BitBoard shift(BitBoard b)
   }
 }
 
+template<Direction Dir>
+constexpr BitBoard dblshift(BitBoard b)
+{
+  return shift<Dir>(shift<Dir>(b));
+}
+
 int      pop(BitBoard& b);
 int      lsb(BitBoard b);
 BitBoard bishopMoves(int sq, BitBoard blockers);
@@ -213,7 +245,7 @@ Piece makePiece(PieceType type)
 }
 
 template<Color Player, PieceType... Types>
-BitBoard getBoards(const Position& p)
+BitBoard getBoard(const Position& p)
 {
   return (p.board(makePiece<Player>(Types)) | ...);
 }
@@ -221,31 +253,188 @@ BitBoard getBoards(const Position& p)
 template<Color Player>
 BitBoard getAllBoards(const Position& p)
 {
-  return getBoards<Player, PWN, HRS, BSH, ROK, QEN, KNG>(p);
+  return getBoard<Player, PWN, HRS, BSH, ROK, QEN, KNG>(p);
+}
+
+template<Color Player>
+BitBoard pawnCaptures(int pos)
+{
+  if constexpr (Player == WHT) {
+    return WhitePawnCaptures[pos];
+  }
+  else {
+    return BlackPawnCaptures[pos];
+  }
+}
+
+template<Color Player>
+BitBoard pawnCaptures(BitBoard b)
+{
+  return shift<RelativeDir<NW, Player>>(b) | shift<RelativeDir<NE, Player>>(b);
 }
 
 template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
-  static constexpr Color Enemy    = Player == BLK ? WHT : BLK;
-  BitBoard               self     = getAllBoards<Player>(p);
-  BitBoard               notself  = ~self;
-  BitBoard               enemy    = getAllBoards<Enemy>(p);
-  BitBoard               all      = self | enemy;
-  BitBoard               ourKing  = p.board(makePiece<Player>(KNG));
-  BitBoard               pinned   = 0;
-  BitBoard               checkers = 0;
-  int                    kingPos  = lsb(ourKing);
-  {
-    // Diag sliders that are lined up with the king.
-    auto diags = bishopMoves(kingPos, enemy) & getBoards<Enemy, BSH, QEN>(p);
-    while (diags) {
-      auto line     = Between[pop(diags)][kingPos];
-      auto blockers = line & self;
+  static constexpr Color Enemy        = Player == BLK ? WHT : BLK;
+  BitBoard               self         = getAllBoards<Player>(p);
+  BitBoard               notself      = ~self;
+  BitBoard               enemy        = getAllBoards<Enemy>(p);
+  BitBoard               notenemy     = ~enemy;
+  BitBoard               all          = self | enemy;
+  BitBoard               empty        = ~all;
+  BitBoard               ourKing      = getBoard<Player, KNG>(p);
+  BitBoard               otherKing    = getBoard<Enemy, KNG>(p);
+  int                    kingPos      = lsb(ourKing);
+  int                    otherKingPos = lsb(otherKing);
+  BitBoard               unsafe       = 0;
+  {  // Find all unsafe squares.
+    unsafe =
+      pawnCaptures<Enemy>(getBoard<Enemy, PWN>(p)) | (KingMoves[otherKingPos] & empty);
+    auto sliders = getBoard<Enemy, BSH, QEN>(p);
+    while (sliders) {
+      unsafe |= bishopMoves(pop(sliders), all);
+    }
+    sliders = getBoard<Enemy, ROK, QEN>(p);
+    while (sliders) {
+      unsafe |= rookMoves(pop(sliders), all);
+    }
+    auto kmoves = KingMoves[kingPos] & (~(unsafe | self));
+    while (kmoves) {
+      moves += MvPiece<Player> {kingPos, pop(kmoves)};
     }
   }
+  BitBoard pins     = 0;
+  BitBoard checkers = 0;
   {
-    auto krok = rookMoves(kingPos, enemy) & notself;
+    checkers |= (KnightMoves[ourKing] & getBoard<Enemy, HRS>(p)) |
+                (pawnCaptures<Player>(kingPos) & getBoard<Enemy, PWN>(p));
+    // Look for checks and pins from sliders.
+    auto diags  = bishopMoves(kingPos, enemy) & getBoard<Enemy, BSH, QEN>(p);
+    auto orthos = rookMoves(kingPos, enemy) & getBoard<Enemy, ROK, QEN>(p);
+    // Slideres that are lined up with the king.
+    auto sliders = diags | orthos;
+    while (sliders) {
+      int  spos = pop(sliders);
+      auto line = Between[spos][kingPos];
+      switch (std::popcount(line & self)) {
+      case 0:  // The king is in check
+        checkers |= OneHot[spos];
+        break;
+      case 1:  // The pin line
+        pins |= line;
+        break;
+      case 2:  // Not in check, not pinned.
+        break;
+      }
+      if (OneHot[spos] & diags) {  // This is a diagonal slider.
+        unsafe |= bishopMoves(spos, all);
+      }
+      else if (OneHot[spos] & orthos) {
+        unsafe |= rookMoves(spos, all);
+      }
+    }
+  }
+  switch (std::popcount(checkers)) {
+  case 0:  // Do nothing.
+    break;
+  case 1: {
+    // Can block, or capture the checker. We already generated all possible king moves.
+    // Try to capture.
+    auto cpos      = lsb(checkers);
+    auto line      = Between[cpos][kingPos];
+    auto attackers = getBoard<Player, PWN>(p);
+    // NW pawn captures.
+    auto captures = shift<RelativeDir<NW, Player>>(attackers) & checkers;
+    while (captures) {
+      moves += MvPiece<Player> {cpos - RelativeDir<NW, Player>, cpos};
+    }
+    // NE pawn captures.
+    captures = shift<RelativeDir<NE, Player>>(attackers) & checkers;
+    while (captures) {
+      moves += MvPiece<Player> {cpos - RelativeDir<NE, Player>, cpos};
+    }
+    // Enpassant captures.
+    if (p.enpassantSq() == cpos && p.piece(cpos) == makePiece<Player>(PWN)) {
+      attackers = shift<RelativeDir<E, Player>>(checkers) & getBoard<Player, PWN>(p);
+      while (attackers) {
+        moves += MvEnpassant<Player> {pop(attackers), RelativeDir<W, Player>};
+      }
+      attackers = shift<RelativeDir<W, Player>>(checkers) & getBoard<Player, PWN>(p);
+      while (attackers) {
+        moves += MvEnpassant<Player> {pop(attackers), RelativeDir<E, Player>};
+      }
+    }
+    // Single push pawn blocks.
+    auto blocked = shift<RelativeDir<N, Player>>(getBoard<Player, PWN>(p)) & line;
+    if (blocked) {
+      int bpos = lsb(blocked);
+      moves += MvPiece<Player> {bpos - RelativeDir<N, Player>, bpos};
+    }
+    // Double push pawn blocks.
+    blocked = dblshift<RelativeDir<N, Player>>(getBoard<Player, PWN>(p)) & line;
+    if (blocked) {
+      moves += MvDoublePush<Player> {pop(blocked) - 2 * RelativeDir<N, Player>};
+    }
+    // Knight captures and blocks.
+    attackers = getBoard<Player, HRS>(p);
+    while (attackers) {
+      int hpos = pop(attackers);
+      if (KnightMoves[hpos] & checkers) {
+        moves += MvPiece<Player> {hpos, cpos};
+      }
+      blocked = KnightMoves[hpos] & line;
+      if (blocked) {
+        moves += MvPiece<Player> {hpos, pop(blocked)};
+      }
+    }
+    // Diag slider captures and blocks.
+    attackers = getBoard<Player, BSH, QEN>();
+    while (attackers) {
+      int  dpos   = pop(attackers);
+      auto dmoves = bishopMoves(dpos, all);
+      if (dmoves & checkers) {
+        moves += MvPiece<Player> {dpos, cpos};
+      }
+      blocked = dmoves & line;
+      if (blocked) {
+        moves += MvPiece<Player> {dpos, pop(blocked)};
+      }
+    }
+    // Ortho slider captures
+    attackers = getBoard<Player, ROK, QEN>();
+    while (attackers) {
+      int  opos   = pop(attackers);
+      auto omoves = rookMoves(opos, all);
+      if (omoves & checkers) {
+        moves += MvPiece<Player> {opos, cpos};
+      }
+      blocked = omoves & line;
+      if (blocked) {
+        moves += MvPiece<Player> {opos, pop(blocked)};
+      }
+    }
+    // Generated all the moves to get out of check.
+    // No more legal moves.
+    return;
+  }
+  case 2:
+    // The king must move to a safe square.
+    // We already generated all possible king moves, so we stop looking for other moves.
+    return;
+  }
+  {  // Pawn single push
+    auto nopins = ~pins;
+    auto pcs    = getBoard<Player, PWN>(p);
+    auto pmoves =
+      // pinned
+      (shift<RelativeDir<N, Player>>(pcs & pins) & empty & pins) |
+      // unpinned
+      (shift<RelativeDir<N, Player>>(pcs & nopins) & empty);
+    while (pmoves) {
+      int pos = pop(pmoves);
+      moves += MvPiece<Player> {pos - RelativeDir<N, Player>, pos};
+    }
   }
   // TODO: Incomplete.
 }
