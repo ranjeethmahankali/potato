@@ -9,15 +9,15 @@ using namespace potato;
 
 TEST_CASE("Moves from the start", "[moves][starting]")
 {
-  Position p;
-  MoveList moves;
-  generateMoves<WHT>(p, moves);
-  std::cout << moves.size() << std::endl;
-  for (const Move& mv : moves) {
-    mv.commit(p);
-    std::cout << p << std::endl << std::endl;
-    mv.revert(p);
-  }
+  // Position p;
+  // MoveList moves;
+  // generateMoves<WHT>(p, moves);
+  // std::cout << moves.size() << std::endl;
+  // for (const Move& mv : moves) {
+  //   mv.commit(p);
+  //   std::cout << p << std::endl << std::endl;
+  //   mv.revert(p);
+  // }
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing]")
@@ -55,13 +55,13 @@ TEST_CASE("Slider move bitboards", "[slider][moves][bitboards]")
     static constexpr std::array<BitBoard, 2> sExpectedMoves = {
       {278921376, 144117404414246912}};
     REQUIRE(std::popcount(bbsh) == 2);
+    // writeBoard(bbsh, std::cout); // To check manually.
     std::array<BitBoard, 2> actual;
     BitBoard*               dst = actual.data();
-    // writeBoard(bbsh, std::cout); // Print to check manually
     while (bbsh) {
       BitBoard moves = bishopMoves(pop(bbsh), all) & notblack;
-      *(dst++)       = moves;
-      // writeBoard(moves, std::cout); // Print to check manually
+      // writeBoard(moves, std::cout); // To check manually.
+      *(dst++) = moves;
     }
     REQUIRE(sExpectedMoves == actual);
   }
@@ -70,10 +70,10 @@ TEST_CASE("Slider move bitboards", "[slider][moves][bitboards]")
   {
     auto wrok = p.board(W_ROK);
     REQUIRE(std::popcount(wrok) == 1);
-    // writeBoard(wrok, std::cout); // To check manually
+    // writeBoard(wrok, std::cout);  // To check manually
     while (wrok) {
       auto moves = rookMoves(pop(wrok), all) & notwhite;
-      // writeBoard(moves, std::cout); // To check manually
+      // writeBoard(moves, std::cout);  // To check manually
       REQUIRE(moves == 565273530728448);
     }
   }

@@ -139,17 +139,17 @@ def rankMask(x, y):
 def diagonalMask(x, y):
     """Get a board with all squared of the diagonal containing this square."""
     if y > x:
-        return segment(0, y - x, 1, 1, 7 - y + x, 7, True)
+        return segment(0, y - x, 1, 1, 7 - y + x, 7, True, True)
     else:
-        return segment(x - y, 0, 1, 1, 7, 7 - x + y, True)
+        return segment(x - y, 0, 1, 1, 7, 7 - x + y, True, True)
 
 
 def antiDiagonalMask(x, y):
     """Get a board with all squares of the anti-diagonal with this square."""
     if x + y < 8:
-        return segment(0, x + y, 1, -1, x + y, 0, True)
+        return segment(0, x + y, 1, -1, x + y, 0, True, True)
     else:
-        return segment(x + y - 7, 7, 1, -1, 7, x + y - 7, True)
+        return segment(x + y - 7, 7, 1, -1, 7, x + y - 7, True, True)
 
 
 def knightMovesMask(x, y):
@@ -274,9 +274,9 @@ if __name__ == "__main__":
     print("")
     printBoardArray(table(diagonalMask), "Diagonal")
     print("")
-    print2dBoardArray(table2d(between), "Between")
-    print("")
     printBoardArray(table(antiDiagonalMask), "AntiDiagonal")
+    print("")
+    print2dBoardArray(table2d(between), "Between")
     print("")
     printBoardArray(table(knightMovesMask), "KnightMoves")
     print("")

@@ -535,6 +535,7 @@ ostream& operator<<(ostream& os, const potato::Position& b)
     }
     os << potato::symbol(b.piece(pos)) << '|';
   }
+  os << std::endl;
   return os;
 }
 
