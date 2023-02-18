@@ -20,12 +20,11 @@ static void push(const MoveList&                      mlist,
 
 TEST_CASE("Moves from the start", "[moves][starting]")
 {
-  static constexpr size_t                    Depth     = 3;
-  static constexpr std::array<size_t, Depth> sExpected = {{20, 400, 8902}};
+  static constexpr size_t                    Depth     = 4;
+  static constexpr std::array<size_t, Depth> sExpected = {{20, 400, 8902, 197281}};
   std::array<size_t, Depth>                  actual;
   std::fill(actual.begin(), actual.end(), 0);
-  Position p;
-  std::cout << p.fen() << std::endl;
+  Position                            p;
   MoveList                            mlist;
   std::stack<std::pair<Move, size_t>> moves;
   std::stack<Move>                    current;
@@ -68,9 +67,10 @@ TEST_CASE("Moves from the start", "[moves][starting]")
 TEST_CASE("Perft From Starting Position", "[perft][starting]")
 {
   Position p;
-  MvPiece<WHT> {C2, C3}.commit(p);
+  // Position p =
+  //   Position::fromFen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2");
   std::cout << p.fen() << std::endl;
-  perft(p, 2);
+  perft(p, 3);
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")

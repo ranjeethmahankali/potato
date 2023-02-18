@@ -156,7 +156,7 @@ void perft(const Position& pOriginal, int depth)
   size_t total = 0;
   for (const auto& m : mlist) {
     m.commit(p);
-    size_t n = perftInternal(p, depth - 1);
+    size_t n = depth == 0 ? 1 : perftInternal(p, depth - 1);
     std::cout << m << ": " << n << std::endl;
     total += n;
     m.revert(p);

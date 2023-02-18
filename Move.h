@@ -81,7 +81,7 @@ struct MvDoublePush
   {
     int d = dest();
     p.move(mFrom, d);
-    p.setEnpassantSq(d);
+    p.setEnpassantSq(d - RelativeDir<N, Player>);
   }
   void revert(Position& p) const { p.move(dest(), mFrom); }
 };
@@ -318,13 +318,17 @@ void generateMoves(const Position& p, MoveList& moves)
     BitBoard pcs = getBoard<Enemy, PWN>(p);
     unsafe       = pawnCaptures<NE, Enemy>(pcs) | pawnCaptures<NW, Enemy>(pcs) |
              (KingMoves[otherKingPos] & empty);
-    auto sliders = getBoard<Enemy, BSH, QEN>(p);
-    while (sliders) {
-      unsafe |= bishopMoves(pop(sliders), all);
+    auto attackers = getBoard<Enemy, BSH, QEN>(p);
+    while (attackers) {
+      unsafe |= bishopMoves(pop(attackers), all);
     }
-    sliders = getBoard<Enemy, ROK, QEN>(p);
-    while (sliders) {
-      unsafe |= rookMoves(pop(sliders), all);
+    attackers = getBoard<Enemy, ROK, QEN>(p);
+    while (attackers) {
+      unsafe |= rookMoves(pop(attackers), all);
+    }
+    attackers = getBoard<Enemy, HRS>(p);
+    while (attackers) {
+      unsafe |= KnightMoves[pop(attackers)];
     }
     auto kmoves = KingMoves[kingPos] & (~(unsafe | self));
     while (kmoves) {
@@ -385,7 +389,8 @@ void generateMoves(const Position& p, MoveList& moves)
       moves += MvPiece<Player> {pop(captures) - RelativeDir<NE, Player>, cpos};
     }
     // Enpassant captures.
-    if (p.enpassantSq() == cpos && p.piece(cpos) == makePiece<Player>(PWN)) {
+    if (p.enpassantSq() == cpos + RelativeDir<N, Player> &&
+        p.piece(cpos) == makePiece<Player>(PWN)) {
       attackers = shift<RelativeDir<E, Player>>(checkers) & getBoard<Player, PWN>(p);
       while (attackers) {
         moves += MvEnpassant<Player> {pop(attackers), RelativeDir<W, Player>};
@@ -415,7 +420,7 @@ void generateMoves(const Position& p, MoveList& moves)
         moves += MvPiece<Player> {hpos, cpos};
       }
       blocked = KnightMoves[hpos] & line;
-      if (blocked) {
+      while (blocked) {
         moves += MvPiece<Player> {hpos, pop(blocked)};
       }
     }
@@ -528,12 +533,15 @@ void generateMoves(const Position& p, MoveList& moves)
     }
     // Enpassant
     if (p.enpassantSq() != -1) {
-      pcs    = getBoard<Player, PWN>(p);
-      pmoves = shift<RelativeDir<E, Player>>(OneHot[p.enpassantSq()]) & pcs;
+      pcs        = getBoard<Player, PWN>(p);
+      int target = p.enpassantSq() + RelativeDir<S, Player>;
+      pmoves =
+        shift<RelativeDir<E, Player>>(OneHot[target] & getBoard<Enemy, PWN>(p)) & pcs;
       if (pmoves) {
         moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<W, Player>};
       }
-      pmoves = shift<RelativeDir<W, Player>>(OneHot[p.enpassantSq()]) & pcs;
+      pmoves =
+        shift<RelativeDir<W, Player>>(OneHot[target] & getBoard<Enemy, PWN>(p)) & pcs;
       if (pmoves) {
         moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<E, Player>};
       }
