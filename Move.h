@@ -315,7 +315,7 @@ void generateMoves(const Position& p, MoveList& moves)
   BitBoard pins     = 0;
   BitBoard checkers = 0;
   {
-    checkers |= (KnightMoves[ourKing] & getBoard<Enemy, HRS>(p)) |
+    checkers |= (KnightMoves[kingPos] & getBoard<Enemy, HRS>(p)) |
                 (pawnCaptures<Player>(kingPos) & getBoard<Enemy, PWN>(p));
     // Look for checks and pins from sliders.
     auto diags  = bishopMoves(kingPos, enemy) & getBoard<Enemy, BSH, QEN>(p);
@@ -457,18 +457,18 @@ void generateMoves(const Position& p, MoveList& moves)
     }
     // Pawn captures
     pcs    = getBoard<Player, PWN>(p);
-    pmoves = pawnCaptures<NE, Player>(pcs);  // To east.
+    pmoves = pawnCaptures<NE, Player>(pcs) & enemy;  // To east.
     while (pmoves) {
       int pos = pop(pmoves);
       moves += MvPiece<Player> {pos - RelativeDir<NE, Player>, pos};
     }
-    pmoves = pawnCaptures<NW, Player>(pcs);  // To west.
+    pmoves = pawnCaptures<NW, Player>(pcs) & enemy;  // To west.
     while (pmoves) {
       int pos = pop(pmoves);
       moves += MvPiece<Player> {pos - RelativeDir<NW, Player>, pos};
     }
     // Pawn promotions.
-    pcs    = getBoard<Player, PWN>(p) & Rank[PromotionRank];
+    pcs    = getBoard<Player, PWN>(p) & PromotionRank;
     pmoves = shift<Up>(pcs) & empty;
     while (pmoves) {
       uint8_t file = uint8_t(pop(pmoves) % 8);
@@ -478,8 +478,8 @@ void generateMoves(const Position& p, MoveList& moves)
       moves += MvPromote<Player> {file, makePiece<Player>(HRS)};
     }
     // Pawn capture promotions.
-    pcs    = getBoard<Player, PWN>(p) & Rank[PromotionRank];
-    pmoves = shift<RelativeDir<NE, Player>>(pcs);
+    pcs    = getBoard<Player, PWN>(p) & PromotionRank;
+    pmoves = shift<RelativeDir<NE, Player>>(pcs) & enemy;
     while (pmoves) {
       uint8_t file = uint8_t(pop(pmoves) % 8);
       moves +=
@@ -490,6 +490,19 @@ void generateMoves(const Position& p, MoveList& moves)
         MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(BSH)};
       moves +=
         MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(HRS)};
+    }
+    pcs    = getBoard<Player, PWN>(p) & PromotionRank;
+    pmoves = shift<RelativeDir<NW, Player>>(pcs) & enemy;
+    while (pmoves) {
+      uint8_t file = uint8_t(pop(pmoves) % 8);
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(QEN)};
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(ROK)};
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(BSH)};
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(HRS)};
     }
     // Enpassant
     if (p.enpassantSq() != -1) {

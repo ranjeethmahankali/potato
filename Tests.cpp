@@ -12,6 +12,7 @@ TEST_CASE("Moves from the start", "[moves][starting]")
   Position p;
   MoveList moves;
   generateMoves<WHT>(p, moves);
+  std::cout << moves.size() << std::endl;
   // static constexpr size_t                     NMoves         = 3;
   // static constexpr std::array<size_t, NMoves> sExpectedMoves = {{20, 400, 8902}};
   // MoveList                                    src;
