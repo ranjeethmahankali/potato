@@ -238,6 +238,37 @@ def between(x1, y1, x2, y2):
         return b
 
 
+def castleEmptyMasks():
+    """Generate mask for squares that need to be empty for castling."""
+    b = [Board() for _ in range(4)]
+    ranks = [0, 7]
+    for rank in ranks:
+        bi = 2 * rank // 7
+        b[bi].set(1, rank)
+        b[bi].set(2, rank)
+        b[bi].set(3, rank)
+        bi += 1
+        b[bi].set(5, rank)
+        b[bi].set(6, rank)
+    return b
+
+
+def castleSafeMask():
+    """Generate mask for squares that need to be safe for castling."""
+    b = [Board() for _ in range(4)]
+    ranks = [0, 7]
+    for rank in ranks:
+        bi = 2 * rank // 7
+        b[bi].set(2, rank)
+        b[bi].set(3, rank)
+        b[bi].set(4, rank)
+        bi += 1
+        b[bi].set(4, rank)
+        b[bi].set(5, rank)
+        b[bi].set(6, rank)
+    return b
+
+
 def table(mapfn):
     """Get a table mapping positions to tables."""
     boards = []
@@ -287,4 +318,8 @@ if __name__ == "__main__":
     print("")
     printBoardArray(table(lambda x, y: pawnCapturesMask(x, y, True)),
                     "WhitePawnCaptures")
+    print("")
+    printBoardArray(castleEmptyMasks(), "CastleEmptyMask")
+    print("")
+    printBoardArray(castleSafeMask(), "CastleSafeMask")
     print('\n} // namespace potato')

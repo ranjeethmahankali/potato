@@ -301,22 +301,18 @@ void generateMoves(const Position& p, MoveList& moves)
   static constexpr Direction Up            = RelativeDir<N, Player>;
   static constexpr BitBoard  HomePawnRank  = Rank[RelativeRank<Player, 1> * 8];
   static constexpr BitBoard  PromotionRank = Rank[RelativeRank<Player, 6> * 8];
-  static constexpr size_t    HomeRowOffset = Player == BLK ? 0 : 56;
   static constexpr Color     Enemy         = Player == BLK ? WHT : BLK;
-  static constexpr Castle    CastleLong = Player == WHT ? Castle::W_LONG : Castle::B_LONG;
-  static constexpr Castle CastleShort = Player == WHT ? Castle::W_SHORT : Castle::B_SHORT;
-  // Useful bitboards
-  BitBoard self         = getAllBoards<Player>(p);
-  BitBoard notself      = ~self;
-  BitBoard enemy        = getAllBoards<Enemy>(p);
-  BitBoard notenemy     = ~enemy;
-  BitBoard all          = self | enemy;
-  BitBoard empty        = ~all;
-  BitBoard ourKing      = getBoard<Player, KNG>(p);
-  BitBoard otherKing    = getBoard<Enemy, KNG>(p);
-  int      kingPos      = lsb(ourKing);
-  int      otherKingPos = lsb(otherKing);
-  BitBoard unsafe       = 0;
+  BitBoard                   self          = getAllBoards<Player>(p);
+  BitBoard                   notself       = ~self;
+  BitBoard                   enemy         = getAllBoards<Enemy>(p);
+  BitBoard                   notenemy      = ~enemy;
+  BitBoard                   all           = self | enemy;
+  BitBoard                   empty         = ~all;
+  BitBoard                   ourKing       = getBoard<Player, KNG>(p);
+  BitBoard                   otherKing     = getBoard<Enemy, KNG>(p);
+  int                        kingPos       = lsb(ourKing);
+  int                        otherKingPos  = lsb(otherKing);
+  BitBoard                   unsafe        = 0;
   {  // Find all unsafe squares.
     unsafe =
       pawnCaptures<Enemy>(getBoard<Enemy, PWN>(p)) | (KingMoves[otherKingPos] & empty);
@@ -590,11 +586,24 @@ void generateMoves(const Position& p, MoveList& moves)
       }
     }
     // Castling.
+    static constexpr Castle CastleLong = Player == WHT ? Castle::W_LONG : Castle::B_LONG;
+    static constexpr Castle CastleShort =
+      Player == WHT ? Castle::W_SHORT : Castle::B_SHORT;
+    static constexpr BitBoard CastleLongSafeMask =
+      CastleSafeMask[std::countr_zero(uint8_t(CastleLong))];
+    static constexpr BitBoard CastleLongEmptyMask =
+      CastleEmptyMask[std::countr_zero(uint8_t(CastleLong))];
+    static constexpr BitBoard CastleShortSafeMask =
+      CastleSafeMask[std::countr_zero(uint8_t(CastleShort))];
+    static constexpr BitBoard CastleShortEmptyMask =
+      CastleEmptyMask[std::countr_zero(uint8_t(CastleShort))];
     Castle rights = p.castlingRights();
-    if (rights & CastleLong) {
+    if ((rights & CastleLong) && !(CastleLongEmptyMask & all) &&
+        !(CastleLongSafeMask & unsafe)) {
       moves += MvCastleLong<Player> {};
     }
-    if (rights & CastleShort) {
+    if ((rights & CastleShort) && !(CastleShortEmptyMask & all) &&
+        !(CastleShortSafeMask & unsafe)) {
       moves += MvCastleShort<Player> {};
     }
   }
