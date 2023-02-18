@@ -24,7 +24,8 @@ TEST_CASE("Moves from the start", "[moves][starting]")
   static constexpr std::array<size_t, Depth> sExpected = {{20, 400, 8902}};
   std::array<size_t, Depth>                  actual;
   std::fill(actual.begin(), actual.end(), 0);
-  Position                            p;
+  Position p;
+  std::cout << p.fen() << std::endl;
   MoveList                            mlist;
   std::stack<std::pair<Move, size_t>> moves;
   std::stack<Move>                    current;
@@ -58,10 +59,11 @@ TEST_CASE("Moves from the start", "[moves][starting]")
   REQUIRE(actual == sExpected);
 }
 
-TEST_CASE("Loading from FEN string", "[fen][parsing]")
+TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {
-  Position pfen = Position::fromFen(
-    "2R1N2N/P4K1P/qr5p/1bP1pPRP/1P1pPp1B/ppb2n2/2rppnPQ/2k4B w - - 0 1");
+  std::string fenstr =
+    "2R1N2N/P4K1P/qr5p/1bP1pPRP/1P1pPp1B/ppb2n2/2rppnPQ/2k4B w - - 0 1";
+  Position pfen     = Position::fromFen(fenstr);
   Position expected = Position::empty();
   expected
     .put({{{C1, B_KNG}, {H1, W_BSH}, {C2, B_ROK}, {D2, B_PWN}, {E2, B_PWN}, {F2, B_HRS},
@@ -76,6 +78,8 @@ TEST_CASE("Loading from FEN string", "[fen][parsing]")
   REQUIRE(pfen.valid());
   REQUIRE(expected.valid());
   REQUIRE(pfen == expected);
+  std::cout << pfen.fen() << std::endl;
+  REQUIRE(pfen.fen() == fenstr);
 }
 
 TEST_CASE("Slider move bitboards", "[slider][moves][bitboards]")

@@ -478,11 +478,29 @@ std::string Position::fen() const
     }
   }
   {  // Active turn
-    out.push_back(mTurn == BLK ? 'b' : 'w');
+    out += mTurn == BLK ? " b" : " w";
   }
   {  // Castling
+    if (!mCastlingRights) {
+      out += " -";
+    }
+    else {
+      static constexpr std::array<char, 4> sSymbols = {{'q', 'k', 'Q', 'K'}};
+      out.push_back(' ');
+      for (int i = 4; i > -1; --i) {
+        if (mCastlingRights & (1 << i)) {
+          out.push_back(sSymbols[i]);
+        }
+      }
+    }
   }
-  throw std::logic_error("Not Implemented.");
+  {
+    out.push_back(' ');
+    out += mEnPassantSquare == -1 ? "-" : SquareCoord[mEnPassantSquare];
+  }
+  out += " " + std::to_string(mHalfMoves);
+  out += " " + std::to_string(mMoveCounter);
+  return out;
 }
 
 History& Position::history()
