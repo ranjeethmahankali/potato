@@ -3,7 +3,7 @@
 
 namespace potato {
 
-void Move::commit(Position& p)
+void Move::commit(Position& p) const
 {
   p.history().push({.mEnpassantSquare = p.enpassantSq()});
   p.setEnpassantSq(-1);
@@ -11,7 +11,7 @@ void Move::commit(Position& p)
   std::visit([&p](auto& mv) { mv.commit(p); }, mVar);
 }
 
-void Move::revert(Position& p)
+void Move::revert(Position& p) const
 {
   std::visit([&p](auto& mv) { mv.revert(p); }, mVar);
   p.setCastlingRights(p.history().pop().mCastlingRights);

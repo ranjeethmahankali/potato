@@ -43,12 +43,16 @@ struct MvPiece
   int mFrom;
   int mTo;
 
-  void commit(Position& p)
+  void commit(Position& p) const
+
   {
     p.history().push({.mPiece = p.piece(mTo)});
     p.move(mFrom, mTo);
   }
-  void revert(Position& p) { p.move(mTo, mFrom).put(mTo, p.history().pop().mPiece); }
+  void revert(Position& p) const
+  {
+    p.move(mTo, mFrom).put(mTo, p.history().pop().mPiece);
+  }
 };
 
 template<Color Player>
@@ -57,12 +61,13 @@ struct MvEnpassant
   int       mFrom;
   Direction mSide;
 
-  void commit(Position& p)
+  void commit(Position& p) const
+
   {
     int target = mFrom + relativeDir<Player>(mSide);
     p.move(mFrom, target + RelativeDir<N, Player>).remove(target);
   }
-  void revert(Position& p)
+  void revert(Position& p) const
   {
     static constexpr Color Enemy  = Color(~Player);
     int                    target = mFrom + relativeDir<Player>(mSide);
@@ -76,12 +81,13 @@ struct MvDoublePush
 {
   int mFrom;
 
-  void commit(Position& p)
+  void commit(Position& p) const
+
   {
     p.move(mFrom, mFrom + 2 * RelativeDir<N, Player>);
     p.setEnpassantSq(mFrom + 2 * RelativeDir<N, Player>);
   }
-  void revert(Position& p) { p.move(mFrom + 2 * RelativeDir<N, Player>, mFrom); }
+  void revert(Position& p) const { p.move(mFrom + 2 * RelativeDir<N, Player>, mFrom); }
 };
 
 template<Color Player>
@@ -90,12 +96,13 @@ struct MvPromote
   uint8_t mFile;
   Piece   mPromoted;
 
-  void commit(Position& p)
+  void commit(Position& p) const
+
   {
     p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 6>})
       .put(glm::ivec2 {int(mFile), RelativeRank<Player, 7>}, mPromoted);
   }
-  void revert(Position& p)
+  void revert(Position& p) const
   {
     p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 7>})
       .put(glm::ivec2 {int(mFile), RelativeRank<Player, 6>},
@@ -110,13 +117,14 @@ struct MvCapturePromote
   Direction mSide;
   Piece     mPromoted;
 
-  void commit(Position& p)
+  void commit(Position& p) const
+
   {
     glm::ivec2 dst = {int(mFile) + relativeDir<Player>(mSide), RelativeRank<Player, 7>};
     p.history().push({.mPiece = p.piece(dst)});
     p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 6>}).put(dst, mPromoted);
   }
-  void revert(Position& p)
+  void revert(Position& p) const
   {
     p.put(glm::ivec2 {int(mFile) + relativeDir<Player>(mSide), RelativeRank<Player, 7>},
           p.history().pop().mPiece)
@@ -129,16 +137,28 @@ template<Color Player>
 struct MvCastleShort
 {
   static constexpr int Rank = RelativeRank<Player, 0>;
-  void commit(Position& p) { p.move({4, Rank}, {6, Rank}).move({7, Rank}, {5, Rank}); }
-  void revert(Position& p) { p.move({5, Rank}, {7, Rank}).move({6, Rank}, {4, Rank}); }
+  void                 commit(Position& p) const
+  {
+    p.move({4, Rank}, {6, Rank}).move({7, Rank}, {5, Rank});
+  }
+  void revert(Position& p) const
+  {
+    p.move({5, Rank}, {7, Rank}).move({6, Rank}, {4, Rank});
+  }
 };
 
 template<Color Player>
 struct MvCastleLong
 {
   static constexpr int Rank = RelativeRank<Player, 0>;
-  void commit(Position& p) { p.move({4, Rank}, {2, Rank}).move({0, Rank}, {3, Rank}); }
-  void revert(Position& p) { p.move({2, Rank}, {4, Rank}).move({3, Rank}, {0, Rank}); }
+  void                 commit(Position& p) const
+  {
+    p.move({4, Rank}, {2, Rank}).move({0, Rank}, {3, Rank});
+  }
+  void revert(Position& p) const
+  {
+    p.move({2, Rank}, {4, Rank}).move({3, Rank}, {0, Rank});
+  }
 };
 
 template<template<Color> typename... MoveTypes>
@@ -166,8 +186,8 @@ public:
       : mVar(m)
   {}
 
-  void commit(Position& p);
-  void revert(Position& p);
+  void commit(Position& p) const;
+  void revert(Position& p) const;
 };
 
 struct MoveList
@@ -281,6 +301,7 @@ void generateMoves(const Position& p, MoveList& moves)
   static constexpr Direction Up            = RelativeDir<N, Player>;
   static constexpr BitBoard  HomePawnRank  = Rank[RelativeRank<Player, 1> * 8];
   static constexpr BitBoard  PromotionRank = Rank[RelativeRank<Player, 6> * 8];
+  static constexpr size_t    HomeRowOffset = Player == BLK ? 0 : 56;
   static constexpr Color     Enemy         = Player == BLK ? WHT : BLK;
   static constexpr Castle    CastleLong = Player == WHT ? Castle::W_LONG : Castle::B_LONG;
   static constexpr Castle CastleShort = Player == WHT ? Castle::W_SHORT : Castle::B_SHORT;
