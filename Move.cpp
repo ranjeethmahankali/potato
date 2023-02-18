@@ -14,6 +14,7 @@ void Move::commit(Position& p) const
   p.setEnpassantSq(-1);
   p.history().push({.mCastlingRights = p.castlingRights()});
   std::visit([&p](auto& mv) { mv.commit(p); }, mVar);
+  p.switchTurn();
 }
 
 void Move::revert(Position& p) const
@@ -21,6 +22,7 @@ void Move::revert(Position& p) const
   std::visit([&p](auto& mv) { mv.revert(p); }, mVar);
   p.setCastlingRights(p.history().pop().mCastlingRights);
   p.setEnpassantSq(p.history().pop().mEnpassantSquare);
+  p.switchTurn();
 }
 
 MoveList::MoveList()

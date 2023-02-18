@@ -122,6 +122,7 @@ public:
   void            setCastlingRights(Castle c);
   Color           turn() const;
   void            setTurn(Color turn);
+  void            switchTurn();
   void            clear();
   size_t          hash() const;
   bool            valid() const;

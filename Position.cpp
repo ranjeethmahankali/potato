@@ -185,6 +185,11 @@ void Position::setTurn(Color turn)
   mTurn = turn;
 }
 
+void Position::switchTurn()
+{
+  mTurn = Color(mTurn ^ WHT);
+}
+
 void Position::clear()
 {
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
