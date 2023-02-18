@@ -528,9 +528,13 @@ void generateMoves(const Position& p, MoveList& moves)
     if (p.enpassantSq() != -1) {
       pcs    = getBoard<Player, PWN>(p);
       pmoves = shift<RelativeDir<E, Player>>(OneHot[p.enpassantSq()]) & pcs;
-      moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<W, Player>};
+      if (pmoves) {
+        moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<W, Player>};
+      }
       pmoves = shift<RelativeDir<W, Player>>(OneHot[p.enpassantSq()]) & pcs;
-      moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<E, Player>};
+      if (pmoves) {
+        moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<E, Player>};
+      }
     }
     // Pinned knights cannot be moved. Only try to move unpinned knights.
     pcs = getBoard<Player, HRS>(p);

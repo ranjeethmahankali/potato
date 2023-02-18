@@ -20,8 +20,8 @@ static void push(const MoveList&                      mlist,
 
 TEST_CASE("Moves from the start", "[moves][starting]")
 {
-  static constexpr size_t                    Depth     = 2;
-  static constexpr std::array<size_t, Depth> sExpected = {{20, 400}};
+  static constexpr size_t                    Depth     = 3;
+  static constexpr std::array<size_t, Depth> sExpected = {{20, 400, 8902}};
   std::array<size_t, Depth>                  actual;
   std::fill(actual.begin(), actual.end(), 0);
   Position                            p;
@@ -29,6 +29,20 @@ TEST_CASE("Moves from the start", "[moves][starting]")
   std::stack<std::pair<Move, size_t>> moves;
   std::stack<Move>                    current;
   do {
+    if (!moves.empty()) {
+      auto mvd = moves.top();
+      moves.pop();
+      while (mvd.second <= current.size()) {
+        // std::cout << "Reverting " << current.top() << std::endl;
+        current.top().revert(p);
+        // std::cout << p << std::endl;
+        current.pop();
+      }
+      // std::cout << "Commiting " << mvd.first << std::endl;
+      mvd.first.commit(p);
+      // std::cout << p << std::endl;
+      current.push(mvd.first);
+    }
     if (current.size() < Depth) {
       if (current.size() % 2 == 0) {
         generateMoves<WHT>(p, mlist);
@@ -39,16 +53,6 @@ TEST_CASE("Moves from the start", "[moves][starting]")
       actual[current.size()] += mlist.size();
       push(mlist, moves, current.size() + 1);
       mlist.clear();
-    }
-    auto mvd = moves.top();
-    moves.pop();
-    if (mvd.second <= current.size()) {
-      current.top().revert(p);
-      current.pop();
-    }
-    if (mvd.second > current.size()) {
-      mvd.first.commit(p);
-      current.push(mvd.first);
     }
   } while (!moves.empty());
   REQUIRE(actual == sExpected);
