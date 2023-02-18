@@ -3,6 +3,11 @@
 
 namespace potato {
 
+const Move::VariantType& Move::value() const
+{
+  return mVar;
+}
+
 void Move::commit(Position& p) const
 {
   p.history().push({.mEnpassantSquare = p.enpassantSq()});
@@ -115,3 +120,67 @@ BitBoard queenMoves(int sq, BitBoard blockers)
 }
 
 }  // namespace potato
+
+namespace std {
+
+using namespace potato;
+static constexpr auto coord = SquareCoord;
+
+template<Color Player>
+std::ostream& operator<<(std::ostream& os, const MvPiece<Player>& m)
+{
+  os << coord[m.mFrom] << coord[m.mTo];
+  return os;
+};
+
+template<Color Player>
+std::ostream& operator<<(std::ostream& os, const MvEnpassant<Player>& m)
+{
+  os << coord[m.mFrom] << 'x' << coord[m.dest()] << " e.p.";
+  return os;
+};
+
+template<Color Player>
+std::ostream& operator<<(std::ostream& os, const MvDoublePush<Player>& m)
+{
+  os << coord[m.mFrom] << coord[m.dest()];
+  return os;
+};
+
+template<Color Player>
+std::ostream& operator<<(std::ostream& os, const MvPromote<Player>& m)
+{
+  os << coord[m.mFile + RelativeRank<Player, 7> * 8] << '=' << symbol(m.mPromoted);
+  return os;
+};
+
+template<Color Player>
+std::ostream& operator<<(std::ostream& os, const MvCapturePromote<Player>& m)
+{
+  os << coord[int(m.mFile) + RelativeRank<Player, 6> * 8] << 'x'
+     << coord[int(m.mFile) + RelativeRank<Player, 7> * 8 + relativeDir<Player>(m.mSide)]
+     << '=' << symbol(m.mPromoted);
+  return os;
+};
+
+template<Color Player>
+std::ostream& operator<<(std::ostream& os, const MvCastleShort<Player>& m)
+{
+  os << "O-O";
+  return os;
+};
+
+template<Color Player>
+std::ostream& operator<<(std::ostream& os, const MvCastleLong<Player>& m)
+{
+  os << "O-O-O";
+  return os;
+};
+
+std::ostream& operator<<(std::ostream& os, const Move& m)
+{
+  std::visit([&os](const auto& v) { os << v; }, m.value());
+  return os;
+}
+
+}  // namespace std

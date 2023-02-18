@@ -1,38 +1,57 @@
 #define CATCH_CONFIG_MAIN
 #include <Move.h>
+#include <algorithm>
 #include <bit>
 #include <catch.hpp>
 #include <catch2/catch_all.hpp>
 #include <iostream>
+#include <stack>
 
 using namespace potato;
 
+static void push(const MoveList&                      mlist,
+                 std::stack<std::pair<Move, size_t>>& moves,
+                 size_t                               depth)
+{
+  for (const Move& m : mlist) {
+    moves.emplace(m, depth);
+  }
+}
+
 TEST_CASE("Moves from the start", "[moves][starting]")
 {
-  static constexpr std::array<size_t, 2> sExpected = {{20, 400}};
-
-  Position p;
-  MoveList dst;
-  MoveList src;
-  generateMoves<WHT>(p, dst);
-  REQUIRE(dst.size() == sExpected[0]);
-  std::swap(src, dst);
-  for (size_t i = 1; i < sExpected.size(); ++i) {
-    // size_t mi = 0;
-    for (const Move& mv : src) {
-      // std::cout << mi++ << std::endl;
-      Position before = p;
-      // std::cout << p << std::endl;
-      mv.commit(p);
-      std::cout << p << std::endl;
-      generateMoves<BLK>(p, dst);
-      // std::cout << p << std::endl;
-      mv.revert(p);
-      // std::cout << p << std::endl;
-      REQUIRE(p == before);
+  static constexpr size_t                    Depth     = 2;
+  static constexpr std::array<size_t, Depth> sExpected = {{20, 400}};
+  std::array<size_t, Depth>                  actual;
+  std::fill(actual.begin(), actual.end(), 0);
+  Position                            p;
+  MoveList                            mlist;
+  std::stack<std::pair<Move, size_t>> moves;
+  std::stack<Move>                    current;
+  do {
+    if (current.size() < Depth) {
+      if (current.size() % 2 == 0) {
+        generateMoves<WHT>(p, mlist);
+      }
+      else {
+        generateMoves<BLK>(p, mlist);
+      }
+      actual[current.size()] += mlist.size();
+      push(mlist, moves, current.size() + 1);
+      mlist.clear();
     }
-    std::cout << dst.size() << std::endl;
-  }
+    auto mvd = moves.top();
+    moves.pop();
+    if (mvd.second <= current.size()) {
+      current.top().revert(p);
+      current.pop();
+    }
+    if (mvd.second > current.size()) {
+      mvd.first.commit(p);
+      current.push(mvd.first);
+    }
+  } while (!moves.empty());
+  REQUIRE(actual == sExpected);
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing]")

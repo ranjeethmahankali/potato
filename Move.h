@@ -61,18 +61,13 @@ struct MvEnpassant
   int       mFrom;
   Direction mSide;
 
-  void commit(Position& p) const
-
-  {
-    int target = mFrom + relativeDir<Player>(mSide);
-    p.move(mFrom, target + RelativeDir<N, Player>).remove(target);
-  }
+  int  target() const { return mFrom + relativeDir<Player>(mSide); }
+  int  dest() const { return target() + RelativeDir<N, Player>; }
+  void commit(Position& p) const { p.move(mFrom, dest()).remove(target()); }
   void revert(Position& p) const
   {
-    static constexpr Color Enemy  = Color(~Player);
-    int                    target = mFrom + relativeDir<Player>(mSide);
-    p.move(target + RelativeDir<N, Player>, mFrom)
-      .put(target, Piece(uint8_t(Enemy) | PieceType::PWN));
+    static constexpr Color Enemy = Color(~Player);
+    p.move(dest(), mFrom).put(target(), Piece(uint8_t(Enemy) | PieceType::PWN));
   }
 };
 
@@ -81,13 +76,15 @@ struct MvDoublePush
 {
   int mFrom;
 
-  void commit(Position& p) const
+  int dest() const { return mFrom + 2 * RelativeDir<N, Player>; }
 
+  void commit(Position& p) const
   {
-    p.move(mFrom, mFrom + 2 * RelativeDir<N, Player>);
-    p.setEnpassantSq(mFrom + 2 * RelativeDir<N, Player>);
+    int d = dest();
+    p.move(mFrom, d);
+    p.setEnpassantSq(d);
   }
-  void revert(Position& p) const { p.move(mFrom + 2 * RelativeDir<N, Player>, mFrom); }
+  void revert(Position& p) const { p.move(dest(), mFrom); }
 };
 
 template<Color Player>
@@ -186,8 +183,9 @@ public:
       : mVar(m)
   {}
 
-  void commit(Position& p) const;
-  void revert(Position& p) const;
+  const VariantType& value() const;
+  void               commit(Position& p) const;
+  void               revert(Position& p) const;
 };
 
 struct MoveList
@@ -615,3 +613,9 @@ void generateMoves(const Position& p, MoveList& moves)
 }
 
 }  // namespace potato
+
+namespace std {
+
+std::ostream& operator<<(std::ostream& os, const potato::Move& m);
+
+}  // namespace std
