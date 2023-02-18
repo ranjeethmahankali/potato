@@ -35,7 +35,7 @@ TEST_CASE("Moves from the start", "[moves][starting]")
       auto mvd = moves.top();
       moves.pop();
       while (mvd.second <= current.size()) {
-        // std::cout << "Reverting " << current.top() << std::endl;
+        // std::cout << p << "\nReverting " << current.top() << std::endl;
         current.top().revert(p);
         // std::cout << p << std::endl;
         current.pop();
@@ -50,6 +50,7 @@ TEST_CASE("Moves from the start", "[moves][starting]")
       current.push(mvd.first);
     }
     if (current.size() < Depth) {
+      // std::cout << p.fen() << std::endl;
       if (current.size() % 2 == 0) {
         generateMoves<WHT>(p, mlist);
       }
@@ -67,9 +68,10 @@ TEST_CASE("Moves from the start", "[moves][starting]")
 TEST_CASE("Perft From Starting Position", "[perft][starting]")
 {
   Position p;
-  // Position p =
-  //   Position::fromFen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2");
+  Move(MvPiece {D2, D3}).commit(p);
+  Move(MvPiece {C7, C5}).commit(p);
   std::cout << p.fen() << std::endl;
+  // std::cout << p << std::endl;
   perft(p, 3);
 }
 

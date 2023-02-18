@@ -37,21 +37,13 @@ inline Direction relativeDir(Direction dir)
 template<Color col, int rank>
 static constexpr int RelativeRank = col == Color::WHT ? (7 - rank) : rank;
 
-template<Color Player>
 struct MvPiece
 {
   int mFrom;
   int mTo;
 
-  void commit(Position& p) const
-  {
-    p.history().push({.mPiece = p.piece(mTo)});
-    p.move(mFrom, mTo);
-  }
-  void revert(Position& p) const
-  {
-    p.move(mTo, mFrom).put(mTo, p.history().pop().mPiece);
-  }
+  void commit(Position& p) const;
+  void revert(Position& p) const;
 };
 
 template<Color Player>
@@ -157,22 +149,22 @@ struct MvCastleLong
   }
 };
 
-template<template<Color> typename... MoveTypes>
-struct TMoveVariant
-{
-  using Type = std::variant<MoveTypes<Color::WHT>..., MoveTypes<Color::BLK>...>;
-};
-
 struct Move  // Wraps all moves in a variant.
 {
 private:
-  using VariantType = typename TMoveVariant<MvPiece,
-                                            MvDoublePush,
-                                            MvEnpassant,
-                                            MvPromote,
-                                            MvCapturePromote,
-                                            MvCastleShort,
-                                            MvCastleLong>::Type;
+  using VariantType = std::variant<MvPiece,
+                                   MvDoublePush<BLK>,
+                                   MvDoublePush<WHT>,
+                                   MvEnpassant<BLK>,
+                                   MvEnpassant<WHT>,
+                                   MvPromote<BLK>,
+                                   MvPromote<WHT>,
+                                   MvCapturePromote<BLK>,
+                                   MvCapturePromote<WHT>,
+                                   MvCastleShort<BLK>,
+                                   MvCastleShort<WHT>,
+                                   MvCastleLong<BLK>,
+                                   MvCastleLong<WHT>>;
   VariantType mVar;
 
 public:
@@ -319,12 +311,13 @@ void generateMoves(const Position& p, MoveList& moves)
     unsafe       = pawnCaptures<NE, Enemy>(pcs) | pawnCaptures<NW, Enemy>(pcs) |
              (KingMoves[otherKingPos] & empty);
     auto attackers = getBoard<Enemy, BSH, QEN>(p);
+    auto allNoKing = all & (~ourKing);
     while (attackers) {
-      unsafe |= bishopMoves(pop(attackers), all);
+      unsafe |= bishopMoves(pop(attackers), allNoKing);
     }
     attackers = getBoard<Enemy, ROK, QEN>(p);
     while (attackers) {
-      unsafe |= rookMoves(pop(attackers), all);
+      unsafe |= rookMoves(pop(attackers), allNoKing);
     }
     attackers = getBoard<Enemy, HRS>(p);
     while (attackers) {
@@ -332,7 +325,7 @@ void generateMoves(const Position& p, MoveList& moves)
     }
     auto kmoves = KingMoves[kingPos] & (~(unsafe | self));
     while (kmoves) {
-      moves += MvPiece<Player> {kingPos, pop(kmoves)};
+      moves += MvPiece {kingPos, pop(kmoves)};
     }
   }
   BitBoard pins     = 0;
@@ -355,8 +348,8 @@ void generateMoves(const Position& p, MoveList& moves)
       case 0:  // The king is in check
         checkers |= OneHot[spos];
         break;
-      case 1:  // The pin line
-        pins |= line;
+      case 1:  // The pin line including the checker
+        pins |= line | OneHot[spos];
         break;
       case 2:  // Not in check, not pinned.
         break;
@@ -381,12 +374,12 @@ void generateMoves(const Position& p, MoveList& moves)
     // NW pawn captures.
     auto captures = shift<RelativeDir<NW, Player>>(attackers) & checkers;
     while (captures) {
-      moves += MvPiece<Player> {pop(captures) - RelativeDir<NW, Player>, cpos};
+      moves += MvPiece {pop(captures) - RelativeDir<NW, Player>, cpos};
     }
     // NE pawn captures.
     captures = shift<RelativeDir<NE, Player>>(attackers) & checkers;
     while (captures) {
-      moves += MvPiece<Player> {pop(captures) - RelativeDir<NE, Player>, cpos};
+      moves += MvPiece {pop(captures) - RelativeDir<NE, Player>, cpos};
     }
     // Enpassant captures.
     if (p.enpassantSq() == cpos + RelativeDir<N, Player> &&
@@ -402,9 +395,9 @@ void generateMoves(const Position& p, MoveList& moves)
     }
     // Single push pawn blocks.
     auto blocked = shift<Up>(getBoard<Player, PWN>(p)) & line;
-    if (blocked) {
-      int bpos = lsb(blocked);
-      moves += MvPiece<Player> {bpos - Up, bpos};
+    while (blocked) {
+      int bpos = pop(blocked);
+      moves += MvPiece {bpos - Up, bpos};
     }
     // Double push pawn blocks.
     blocked =
@@ -417,11 +410,11 @@ void generateMoves(const Position& p, MoveList& moves)
     while (attackers) {
       int hpos = pop(attackers);
       if (KnightMoves[hpos] & checkers) {
-        moves += MvPiece<Player> {hpos, cpos};
+        moves += MvPiece {hpos, cpos};
       }
       blocked = KnightMoves[hpos] & line;
       while (blocked) {
-        moves += MvPiece<Player> {hpos, pop(blocked)};
+        moves += MvPiece {hpos, pop(blocked)};
       }
     }
     // Diag slider captures and blocks.
@@ -430,11 +423,11 @@ void generateMoves(const Position& p, MoveList& moves)
       int  dpos   = pop(attackers);
       auto dmoves = bishopMoves(dpos, all);
       if (dmoves & checkers) {
-        moves += MvPiece<Player> {dpos, cpos};
+        moves += MvPiece {dpos, cpos};
       }
       blocked = dmoves & line;
       if (blocked) {
-        moves += MvPiece<Player> {dpos, pop(blocked)};
+        moves += MvPiece {dpos, pop(blocked)};
       }
     }
     // Ortho slider captures
@@ -443,11 +436,11 @@ void generateMoves(const Position& p, MoveList& moves)
       int  opos   = pop(attackers);
       auto omoves = rookMoves(opos, all);
       if (omoves & checkers) {
-        moves += MvPiece<Player> {opos, cpos};
+        moves += MvPiece {opos, cpos};
       }
       blocked = omoves & line;
       if (blocked) {
-        moves += MvPiece<Player> {opos, pop(blocked)};
+        moves += MvPiece {opos, pop(blocked)};
       }
     }
     // Generated all the moves to get out of check.
@@ -469,7 +462,7 @@ void generateMoves(const Position& p, MoveList& moves)
       (shift<Up>(pcs & nopins) & empty);
     while (pmoves) {
       int pos = pop(pmoves);
-      moves += MvPiece<Player> {pos - Up, pos};
+      moves += MvPiece {pos - Up, pos};
     }
     // Pawn double push
     pcs &= HomePawnRank;
@@ -487,12 +480,12 @@ void generateMoves(const Position& p, MoveList& moves)
     pmoves = pawnCaptures<NE, Player>(pcs) & enemy;  // To east.
     while (pmoves) {
       int pos = pop(pmoves);
-      moves += MvPiece<Player> {pos - RelativeDir<NE, Player>, pos};
+      moves += MvPiece {pos - RelativeDir<NE, Player>, pos};
     }
     pmoves = pawnCaptures<NW, Player>(pcs) & enemy;  // To west.
     while (pmoves) {
       int pos = pop(pmoves);
-      moves += MvPiece<Player> {pos - RelativeDir<NW, Player>, pos};
+      moves += MvPiece {pos - RelativeDir<NW, Player>, pos};
     }
     // Pawn promotions.
     pcs    = getBoard<Player, PWN>(p) & PromotionRank;
@@ -552,7 +545,7 @@ void generateMoves(const Position& p, MoveList& moves)
       int pos = pop(pcs);
       pmoves  = KnightMoves[pos] & notself;
       while (pmoves) {
-        moves += MvPiece<Player> {pos, pop(pmoves)};
+        moves += MvPiece {pos, pop(pmoves)};
       }
     }
     // Pinned diag sliders
@@ -561,7 +554,7 @@ void generateMoves(const Position& p, MoveList& moves)
       int pos = pop(pcs);
       pmoves  = bishopMoves(pos, nopins) & pins & notself;
       while (pmoves) {
-        moves += MvPiece<Player> {pos, pop(pmoves)};
+        moves += MvPiece {pos, pop(pmoves)};
       }
     }
     // Pinned ortho sliders
@@ -573,14 +566,14 @@ void generateMoves(const Position& p, MoveList& moves)
         // Same rank as the king - restrict the movement to that rank.
         pmoves &= Rank[pos];
         while (pmoves) {
-          moves += MvPiece<Player> {pos, pop(pmoves)};
+          moves += MvPiece {pos, pop(pmoves)};
         }
       }
       else if (kingPos % 8 == pos % 8) {
         // Same file as the king - restruct the movement to that file.
         pmoves &= File[pos];
         while (pmoves) {
-          moves += MvPiece<Player> {pos, pop(pmoves)};
+          moves += MvPiece {pos, pop(pmoves)};
         }
       }
     }
@@ -590,7 +583,7 @@ void generateMoves(const Position& p, MoveList& moves)
       int pos = pop(pcs);
       pmoves  = bishopMoves(pos, all) & notself;
       while (pmoves) {
-        moves += MvPiece<Player> {pos, pop(pmoves)};
+        moves += MvPiece {pos, pop(pmoves)};
       }
     }
     // Unpinned ortho sliders
@@ -599,7 +592,7 @@ void generateMoves(const Position& p, MoveList& moves)
       int pos = pop(pcs);
       pmoves  = rookMoves(pos, all) & notself;
       while (pmoves) {
-        moves += MvPiece<Player> {pos, pop(pmoves)};
+        moves += MvPiece {pos, pop(pmoves)};
       }
     }
     // Castling.

@@ -9,6 +9,17 @@ const Move::VariantType& Move::value() const
   return mVar;
 }
 
+void MvPiece::commit(Position& p) const
+{
+  p.history().push({.mPiece = p.piece(mTo)});
+  p.move(mFrom, mTo);
+}
+
+void MvPiece::revert(Position& p) const
+{
+  p.move(mTo, mFrom).put(mTo, p.history().pop().mPiece);
+}
+
 void Move::commit(Position& p) const
 {
   p.history().push({.mEnpassantSquare = p.enpassantSq()});
@@ -131,7 +142,7 @@ size_t perftInternal(Position& p, int depth)
   else {
     generateMoves<BLK>(p, mlist);
   }
-  if (depth == 0) {
+  if (depth == 1) {
     return mlist.size();
   }
   size_t total = 0;
@@ -156,7 +167,7 @@ void perft(const Position& pOriginal, int depth)
   size_t total = 0;
   for (const auto& m : mlist) {
     m.commit(p);
-    size_t n = depth == 0 ? 1 : perftInternal(p, depth - 1);
+    size_t n = depth == 1 ? 1 : perftInternal(p, depth - 1);
     std::cout << m << ": " << n << std::endl;
     total += n;
     m.revert(p);
@@ -171,8 +182,7 @@ namespace std {
 using namespace potato;
 static constexpr auto coord = SquareCoord;
 
-template<Color Player>
-std::ostream& operator<<(std::ostream& os, const MvPiece<Player>& m)
+std::ostream& operator<<(std::ostream& os, const MvPiece& m)
 {
   os << coord[m.mFrom] << coord[m.mTo];
   return os;
