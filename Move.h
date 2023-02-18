@@ -193,10 +193,14 @@ public:
 struct MoveList
 {
   MoveList();
-  const Move* begin() const;
-  const Move* end() const;
-  size_t      size() const;
-  void        clear();
+  MoveList(const MoveList&);
+  MoveList(MoveList&&);
+  const MoveList& operator=(const MoveList&);
+  const MoveList& operator=(MoveList&&);
+  const Move*     begin() const;
+  const Move*     end() const;
+  size_t          size() const;
+  void            clear();
 
 private:
   static constexpr size_t MaxMoves = 256;

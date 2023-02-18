@@ -23,6 +23,32 @@ MoveList::MoveList()
     , mEnd(mBuf.data())
 {}
 
+MoveList::MoveList(const MoveList& other)
+    : mBuf(other.mBuf)
+    , mEnd(mBuf.data() + other.size())
+{}
+
+MoveList::MoveList(MoveList&& other)
+    : mBuf(other.mBuf)
+    , mEnd(mBuf.data() + other.size())
+{
+  other.clear();
+}
+
+const MoveList& MoveList::operator=(const MoveList& other)
+{
+  mBuf = other.mBuf;
+  mEnd = mBuf.data() + other.size();
+  return *this;
+}
+const MoveList& MoveList::operator=(MoveList&& other)
+{
+  mBuf = other.mBuf;
+  mEnd = mBuf.data() + other.size();
+  other.clear();
+  return *this;
+}
+
 const Move* MoveList::begin() const
 {
   return mBuf.data();
