@@ -122,7 +122,26 @@ BitBoard queenMoves(int sq, BitBoard blockers)
   return bishopMoves(sq, blockers) | rookMoves(sq, blockers);
 }
 
-void perftInternal(Position& p, int depth) {}
+size_t perftInternal(Position& p, int depth)
+{
+  MoveList mlist;
+  if (p.turn() == WHT) {
+    generateMoves<WHT>(p, mlist);
+  }
+  else {
+    generateMoves<BLK>(p, mlist);
+  }
+  if (depth == 0) {
+    return mlist.size();
+  }
+  size_t total = 0;
+  for (const auto& m : mlist) {
+    m.commit(p);
+    total += perftInternal(p, depth - 1);
+    m.revert(p);
+  }
+  return total;
+}
 
 void perft(const Position& pOriginal, int depth)
 {
@@ -134,11 +153,15 @@ void perft(const Position& pOriginal, int depth)
   else {
     generateMoves<BLK>(p, mlist);
   }
+  size_t total = 0;
   for (const auto& m : mlist) {
     m.commit(p);
-    std::cout << m << ": " << std::endl;
+    size_t n = perftInternal(p, depth - 1);
+    std::cout << m << ": " << n << std::endl;
+    total += n;
     m.revert(p);
   }
+  std::cout << std::endl << "Total: " << total << std::endl;
 }
 
 }  // namespace potato

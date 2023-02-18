@@ -223,7 +223,13 @@ def between(x1, y1, x2, y2):
                        y2,
                        withStart=False)
     elif y1 - x1 == y2 - x2:
-        return segment(x1, y1, 1, 1, x2, y2, withStart=False)
+        return segment(x1,
+                       y1,
+                       1 if x2 > x1 else -1,
+                       1 if x2 > x1 else -1,
+                       x2,
+                       y2,
+                       withStart=False)
     elif x1 + y1 == x2 + y2:
         return segment(x1,
                        y1,

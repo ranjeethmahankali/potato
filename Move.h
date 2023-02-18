@@ -344,6 +344,9 @@ void generateMoves(const Position& p, MoveList& moves)
     while (sliders) {
       int  spos = pop(sliders);
       auto line = Between[spos][kingPos];
+      if (!line) {  // No line of sight.
+        continue;
+      }
       switch (std::popcount(line & self)) {
       case 0:  // The king is in check
         checkers |= OneHot[spos];
@@ -374,12 +377,12 @@ void generateMoves(const Position& p, MoveList& moves)
     // NW pawn captures.
     auto captures = shift<RelativeDir<NW, Player>>(attackers) & checkers;
     while (captures) {
-      moves += MvPiece<Player> {cpos - RelativeDir<NW, Player>, cpos};
+      moves += MvPiece<Player> {pop(captures) - RelativeDir<NW, Player>, cpos};
     }
     // NE pawn captures.
     captures = shift<RelativeDir<NE, Player>>(attackers) & checkers;
     while (captures) {
-      moves += MvPiece<Player> {cpos - RelativeDir<NE, Player>, cpos};
+      moves += MvPiece<Player> {pop(captures) - RelativeDir<NE, Player>, cpos};
     }
     // Enpassant captures.
     if (p.enpassantSq() == cpos && p.piece(cpos) == makePiece<Player>(PWN)) {
@@ -536,7 +539,7 @@ void generateMoves(const Position& p, MoveList& moves)
       }
     }
     // Pinned knights cannot be moved. Only try to move unpinned knights.
-    pcs = getBoard<Player, HRS>(p);
+    pcs = getBoard<Player, HRS>(p) & nopins;
     while (pcs) {
       int pos = pop(pcs);
       pmoves  = KnightMoves[pos] & notself;

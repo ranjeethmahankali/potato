@@ -65,6 +65,14 @@ TEST_CASE("Moves from the start", "[moves][starting]")
   REQUIRE(actual == sExpected);
 }
 
+TEST_CASE("Perft From Starting Position", "[perft][starting]")
+{
+  Position p;
+  MvPiece<WHT> {C2, C3}.commit(p);
+  std::cout << p.fen() << std::endl;
+  perft(p, 2);
+}
+
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {
   std::string fenstr =
