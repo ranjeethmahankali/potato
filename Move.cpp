@@ -1,5 +1,6 @@
 #include <Move.h>
 #include <bit>
+#include <iostream>
 
 namespace potato {
 
@@ -119,6 +120,25 @@ BitBoard rookMoves(int sq, BitBoard blockers)
 BitBoard queenMoves(int sq, BitBoard blockers)
 {
   return bishopMoves(sq, blockers) | rookMoves(sq, blockers);
+}
+
+void perftInternal(Position& p, int depth) {}
+
+void perft(const Position& pOriginal, int depth)
+{
+  Position p = pOriginal;
+  MoveList mlist;
+  if (p.turn() == WHT) {
+    generateMoves<WHT>(p, mlist);
+  }
+  else {
+    generateMoves<BLK>(p, mlist);
+  }
+  for (const auto& m : mlist) {
+    m.commit(p);
+    std::cout << m << ": " << std::endl;
+    m.revert(p);
+  }
 }
 
 }  // namespace potato

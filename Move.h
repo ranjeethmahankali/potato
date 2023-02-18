@@ -44,7 +44,6 @@ struct MvPiece
   int mTo;
 
   void commit(Position& p) const
-
   {
     p.history().push({.mPiece = p.piece(mTo)});
     p.move(mFrom, mTo);
@@ -615,6 +614,8 @@ void generateMoves(const Position& p, MoveList& moves)
     }
   }
 }
+
+void perft(const Position& p, int depth);
 
 }  // namespace potato
 

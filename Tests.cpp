@@ -29,6 +29,8 @@ TEST_CASE("Moves from the start", "[moves][starting]")
   MoveList                            mlist;
   std::stack<std::pair<Move, size_t>> moves;
   std::stack<Move>                    current;
+  std::stack<Position>                positions;
+  positions.push(p);
   do {
     if (!moves.empty()) {
       auto mvd = moves.top();
@@ -38,10 +40,14 @@ TEST_CASE("Moves from the start", "[moves][starting]")
         current.top().revert(p);
         // std::cout << p << std::endl;
         current.pop();
+        positions.pop();
+        // Make sure the position is accurate after reverting.
+        REQUIRE(p == positions.top());
       }
       // std::cout << "Commiting " << mvd.first << std::endl;
       mvd.first.commit(p);
       // std::cout << p << std::endl;
+      positions.push(p);
       current.push(mvd.first);
     }
     if (current.size() < Depth) {
