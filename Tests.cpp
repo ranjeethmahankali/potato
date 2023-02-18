@@ -12,7 +12,7 @@ TEST_CASE("Moves from the start", "[moves][starting]")
   Position p;
   MoveList moves;
   generateMoves<WHT>(p, moves);
-  std::cout << moves.size() << std::endl;
+  REQUIRE(moves.size() == 20);
   for (const Move& mv : moves) {
     Position before = p;
     mv.commit(p);

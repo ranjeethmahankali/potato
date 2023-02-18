@@ -271,7 +271,7 @@ BitBoard getAllBoards(const Position& p)
 }
 
 template<Color Player>
-BitBoard pawnCaptures(int pos)
+BitBoard pawnCapturesFromPos(int pos)
 {
   if constexpr (Player == WHT) {
     return WhitePawnCaptures[pos];
@@ -314,8 +314,9 @@ void generateMoves(const Position& p, MoveList& moves)
   int                        otherKingPos  = lsb(otherKing);
   BitBoard                   unsafe        = 0;
   {  // Find all unsafe squares.
-    unsafe =
-      pawnCaptures<Enemy>(getBoard<Enemy, PWN>(p)) | (KingMoves[otherKingPos] & empty);
+    BitBoard pcs = getBoard<Enemy, PWN>(p);
+    unsafe       = pawnCaptures<NE, Enemy>(pcs) | pawnCaptures<NW, Enemy>(pcs) |
+             (KingMoves[otherKingPos] & empty);
     auto sliders = getBoard<Enemy, BSH, QEN>(p);
     while (sliders) {
       unsafe |= bishopMoves(pop(sliders), all);
@@ -333,7 +334,7 @@ void generateMoves(const Position& p, MoveList& moves)
   BitBoard checkers = 0;
   {
     checkers |= (KnightMoves[kingPos] & getBoard<Enemy, HRS>(p)) |
-                (pawnCaptures<Player>(kingPos) & getBoard<Enemy, PWN>(p));
+                (pawnCapturesFromPos<Player>(kingPos) & getBoard<Enemy, PWN>(p));
     // Look for checks and pins from sliders.
     auto diags  = bishopMoves(kingPos, enemy) & getBoard<Enemy, BSH, QEN>(p);
     auto orthos = rookMoves(kingPos, enemy) & getBoard<Enemy, ROK, QEN>(p);
@@ -446,7 +447,7 @@ void generateMoves(const Position& p, MoveList& moves)
   }
   case 2:
     // The king must move to a safe square.
-    // We already generated all possible king moves, so we stop looking for other moves.
+    // We already generated all possible king moves, so we stop looking for other mvoes.
     return;
   }
   {  // Pawn single push
