@@ -1,6 +1,7 @@
 #include <Move.h>
 #include <algorithm>
 #include <glm/fwd.hpp>
+#include <ostream>
 #include <regex>
 
 namespace potato {
@@ -397,7 +398,10 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
     auto match = std::find_if(sCastlingPos.begin(), sCastlingPos.end(), [c](auto tup) {
       return std::get<0>(tup) == c;
     });
-    rights     = Castle(rights | std::get<1>(*match));
+    if (match == sCastlingPos.end()) {
+      continue;
+    }
+    rights = Castle(rights | std::get<1>(*match));
   }
 }
 
@@ -524,7 +528,34 @@ void writeBoard(BitBoard b, std::ostream& os)
 }  // namespace potato
 
 namespace std {
-ostream& operator<<(ostream& os, const potato::Position& b)
+using namespace potato;
+ostream& operator<<(ostream& os, Color c)
+{
+  os << (c == WHT ? "White" : c == BLK ? "Black" : "");
+  return os;
+}
+
+ostream& operator<<(ostream& os, Castle c)
+{
+  if (c & Castle::W_SHORT) {
+    os << 'K';
+  }
+  if (c & Castle::W_LONG) {
+    os << 'Q';
+  }
+  if (c & Castle::B_SHORT) {
+    os << 'k';
+  }
+  if (c & Castle::B_LONG) {
+    os << 'q';
+  }
+  if (!c) {
+    os << '-';
+  }
+  return os;
+}
+
+ostream& operator<<(ostream& os, const Position& b)
 {
   for (int pos = 0; pos < 64; ++pos) {
     if (pos % 8 == 0) {
@@ -533,9 +564,11 @@ ostream& operator<<(ostream& os, const potato::Position& b)
       }
       os << '|';
     }
-    os << potato::symbol(b.piece(pos)) << '|';
+    os << symbol(b.piece(pos)) << '|';
   }
   os << std::endl;
+  os << "Turn: " << b.turn() << std::endl;
+  os << "Castling rights: " << b.castlingRights() << std::endl;
   return os;
 }
 

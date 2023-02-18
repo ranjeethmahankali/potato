@@ -9,15 +9,19 @@ using namespace potato;
 
 TEST_CASE("Moves from the start", "[moves][starting]")
 {
-  // Position p;
-  // MoveList moves;
-  // generateMoves<WHT>(p, moves);
-  // std::cout << moves.size() << std::endl;
-  // for (const Move& mv : moves) {
-  //   mv.commit(p);
-  //   std::cout << p << std::endl << std::endl;
-  //   mv.revert(p);
-  // }
+  Position p;
+  MoveList moves;
+  generateMoves<WHT>(p, moves);
+  std::cout << moves.size() << std::endl;
+  for (const Move& mv : moves) {
+    Position before = p;
+    mv.commit(p);
+    mv.revert(p);
+    if (p != before) {
+      std::cout << p << std::endl << std::endl;
+    }
+    REQUIRE(p == before);
+  }
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing]")
