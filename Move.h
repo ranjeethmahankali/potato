@@ -87,18 +87,18 @@ struct MvDoublePush
 template<Color Player>
 struct MvPromote
 {
-  int   mFile;
-  Piece mPromoted;
+  uint8_t mFile;
+  Piece   mPromoted;
 
   void commit(Position& p)
   {
-    p.remove(glm::ivec2 {mFile, RelativeRank<Player, 6>})
-      .put(glm::ivec2 {mFile, RelativeRank<Player, 7>}, mPromoted);
+    p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 6>})
+      .put(glm::ivec2 {int(mFile), RelativeRank<Player, 7>}, mPromoted);
   }
   void revert(Position& p)
   {
-    p.remove(glm::ivec2 {mFile, RelativeRank<Player, 7>})
-      .put(glm::ivec2 {mFile, RelativeRank<Player, 6>},
+    p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 7>})
+      .put(glm::ivec2 {int(mFile), RelativeRank<Player, 6>},
            Piece(uint8_t(Player) | PieceType::PWN));
   }
 };
@@ -106,21 +106,21 @@ struct MvPromote
 template<Color Player>
 struct MvCapturePromote
 {
-  int       mFile;
+  uint8_t   mFile;
   Direction mSide;
   Piece     mPromoted;
 
   void commit(Position& p)
   {
-    glm::ivec2 dst = {mFile + relativeDir<Player>(mSide), RelativeRank<Player, 7>};
+    glm::ivec2 dst = {int(mFile) + relativeDir<Player>(mSide), RelativeRank<Player, 7>};
     p.history().push({.mPiece = p.piece(dst)});
-    p.remove(glm::ivec2 {mFile, RelativeRank<Player, 6>}).put(dst, mPromoted);
+    p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 6>}).put(dst, mPromoted);
   }
   void revert(Position& p)
   {
-    p.put(glm::ivec2 {mFile + relativeDir<Player>(mSide), RelativeRank<Player, 7>},
+    p.put(glm::ivec2 {int(mFile) + relativeDir<Player>(mSide), RelativeRank<Player, 7>},
           p.history().pop().mPiece)
-      .put(glm::ivec2 {mFile, RelativeRank<Player, 6>},
+      .put(glm::ivec2 {int(mFile), RelativeRank<Player, 6>},
            Piece(uint8_t(Player) | PieceType::PWN));
   }
 };
@@ -261,29 +261,41 @@ BitBoard pawnCaptures(int pos)
   }
 }
 
-template<Color Player>
+template<Direction Dir, Color Player>
 BitBoard pawnCaptures(BitBoard b)
 {
-  return shift<RelativeDir<NW, Player>>(b) | shift<RelativeDir<NE, Player>>(b);
+  if constexpr (Dir == W || Dir == NW) {
+    return shift<RelativeDir<NW, Player>>(b);
+  }
+  else if constexpr (Dir == E || Dir == NE) {
+    return shift<RelativeDir<NE, Player>>(b);
+  }
+  else {
+    return 0;
+  }
 }
 
 template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
-  static constexpr Direction Up           = RelativeDir<N, Player>;
-  static constexpr BitBoard  HomePawnRank = Rank[RelativeRank<Player, 1> * 8];
-  static constexpr Color     Enemy        = Player == BLK ? WHT : BLK;
-  BitBoard                   self         = getAllBoards<Player>(p);
-  BitBoard                   notself      = ~self;
-  BitBoard                   enemy        = getAllBoards<Enemy>(p);
-  BitBoard                   notenemy     = ~enemy;
-  BitBoard                   all          = self | enemy;
-  BitBoard                   empty        = ~all;
-  BitBoard                   ourKing      = getBoard<Player, KNG>(p);
-  BitBoard                   otherKing    = getBoard<Enemy, KNG>(p);
-  int                        kingPos      = lsb(ourKing);
-  int                        otherKingPos = lsb(otherKing);
-  BitBoard                   unsafe       = 0;
+  static constexpr Direction Up            = RelativeDir<N, Player>;
+  static constexpr BitBoard  HomePawnRank  = Rank[RelativeRank<Player, 1> * 8];
+  static constexpr BitBoard  PromotionRank = Rank[RelativeRank<Player, 6> * 8];
+  static constexpr Color     Enemy         = Player == BLK ? WHT : BLK;
+  static constexpr Castle    CastleLong = Player == WHT ? Castle::W_LONG : Castle::B_LONG;
+  static constexpr Castle CastleShort = Player == WHT ? Castle::W_SHORT : Castle::B_SHORT;
+  // Useful bitboards
+  BitBoard self         = getAllBoards<Player>(p);
+  BitBoard notself      = ~self;
+  BitBoard enemy        = getAllBoards<Enemy>(p);
+  BitBoard notenemy     = ~enemy;
+  BitBoard all          = self | enemy;
+  BitBoard empty        = ~all;
+  BitBoard ourKing      = getBoard<Player, KNG>(p);
+  BitBoard otherKing    = getBoard<Enemy, KNG>(p);
+  int      kingPos      = lsb(ourKing);
+  int      otherKingPos = lsb(otherKing);
+  BitBoard unsafe       = 0;
   {  // Find all unsafe squares.
     unsafe =
       pawnCaptures<Enemy>(getBoard<Enemy, PWN>(p)) | (KingMoves[otherKingPos] & empty);
@@ -386,7 +398,7 @@ void generateMoves(const Position& p, MoveList& moves)
       }
     }
     // Diag slider captures and blocks.
-    attackers = getBoard<Player, BSH, QEN>();
+    attackers = getBoard<Player, BSH, QEN>(p);
     while (attackers) {
       int  dpos   = pop(attackers);
       auto dmoves = bishopMoves(dpos, all);
@@ -399,7 +411,7 @@ void generateMoves(const Position& p, MoveList& moves)
       }
     }
     // Ortho slider captures
-    attackers = getBoard<Player, ROK, QEN>();
+    attackers = getBoard<Player, ROK, QEN>(p);
     while (attackers) {
       int  opos   = pop(attackers);
       auto omoves = rookMoves(opos, all);
@@ -443,10 +455,50 @@ void generateMoves(const Position& p, MoveList& moves)
       int pos = pop(pmoves);
       moves += MvDoublePush<Player> {pos - 2 * Up};
     }
-    // TODO: Pawn captures.
-    // TODO: Pawn promotions.
-    // TODO: Pawn capture promotions.
-    // TODO: Enpassant.
+    // Pawn captures
+    pcs    = getBoard<Player, PWN>(p);
+    pmoves = pawnCaptures<NE, Player>(pcs);  // To east.
+    while (pmoves) {
+      int pos = pop(pmoves);
+      moves += MvPiece<Player> {pos - RelativeDir<NE, Player>, pos};
+    }
+    pmoves = pawnCaptures<NW, Player>(pcs);  // To west.
+    while (pmoves) {
+      int pos = pop(pmoves);
+      moves += MvPiece<Player> {pos - RelativeDir<NW, Player>, pos};
+    }
+    // Pawn promotions.
+    pcs    = getBoard<Player, PWN>(p) & Rank[PromotionRank];
+    pmoves = shift<Up>(pcs) & empty;
+    while (pmoves) {
+      uint8_t file = uint8_t(pop(pmoves) % 8);
+      moves += MvPromote<Player> {file, makePiece<Player>(QEN)};
+      moves += MvPromote<Player> {file, makePiece<Player>(ROK)};
+      moves += MvPromote<Player> {file, makePiece<Player>(BSH)};
+      moves += MvPromote<Player> {file, makePiece<Player>(HRS)};
+    }
+    // Pawn capture promotions.
+    pcs    = getBoard<Player, PWN>(p) & Rank[PromotionRank];
+    pmoves = shift<RelativeDir<NE, Player>>(pcs);
+    while (pmoves) {
+      uint8_t file = uint8_t(pop(pmoves) % 8);
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(QEN)};
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(ROK)};
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(BSH)};
+      moves +=
+        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(HRS)};
+    }
+    // Enpassant
+    if (p.enpassantSq() != -1) {
+      pcs    = getBoard<Player, PWN>(p);
+      pmoves = shift<RelativeDir<E, Player>>(OneHot[p.enpassantSq()]) & pcs;
+      moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<W, Player>};
+      pmoves = shift<RelativeDir<W, Player>>(OneHot[p.enpassantSq()]) & pcs;
+      moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<E, Player>};
+    }
     // Pinned knights cannot be moved. Only try to move unpinned knights.
     pcs = getBoard<Player, HRS>(p);
     while (pcs) {
@@ -456,10 +508,62 @@ void generateMoves(const Position& p, MoveList& moves)
         moves += MvPiece<Player> {pos, pop(pmoves)};
       }
     }
-    // TODO: Moves for pinned and unpinned sliders.
-    // TODO: Castling.
+    // Pinned diag sliders
+    pcs = getBoard<Player, BSH, QEN>(p) & pins;
+    while (pcs) {
+      int pos = pop(pcs);
+      pmoves  = bishopMoves(pos, nopins) & pins & notself;
+      while (pmoves) {
+        moves += MvPiece<Player> {pos, pop(pmoves)};
+      }
+    }
+    // Pinned ortho sliders
+    pcs = getBoard<Player, ROK, QEN>(p) & pins;
+    while (pcs) {
+      int pos = pop(pcs);
+      pmoves  = rookMoves(pos, all) & notself;
+      if (kingPos / 8 == pos / 8) {
+        // Same rank as the king - restrict the movement to that rank.
+        pmoves &= Rank[pos];
+        while (pmoves) {
+          moves += MvPiece<Player> {pos, pop(pmoves)};
+        }
+      }
+      else if (kingPos % 8 == pos % 8) {
+        // Same file as the king - restruct the movement to that file.
+        pmoves &= File[pos];
+        while (pmoves) {
+          moves += MvPiece<Player> {pos, pop(pmoves)};
+        }
+      }
+    }
+    // Unpinned diag sliders
+    pcs = getBoard<Player, BSH, QEN>(p) & nopins;
+    while (pcs) {
+      int pos = pop(pcs);
+      pmoves  = bishopMoves(pos, all) & notself;
+      while (pmoves) {
+        moves += MvPiece<Player> {pos, pop(pmoves)};
+      }
+    }
+    // Unpinned ortho sliders
+    pcs = getBoard<Player, ROK, QEN>(p) & nopins;
+    while (pcs) {
+      int pos = pop(pcs);
+      pmoves  = rookMoves(pos, all) & notself;
+      while (pmoves) {
+        moves += MvPiece<Player> {pos, pop(pmoves)};
+      }
+    }
+    // Castling.
+    Castle rights = p.castlingRights();
+    if (rights & CastleLong) {
+      moves += MvCastleLong<Player> {};
+    }
+    if (rights & CastleShort) {
+      moves += MvCastleShort<Player> {};
+    }
   }
-  // TODO: Incomplete.
 }
 
 }  // namespace potato
