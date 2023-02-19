@@ -476,13 +476,19 @@ void generateMoves(const Position& p, MoveList& moves)
       moves += MvDoublePush<Player> {pos - 2 * Up};
     }
     // Pawn captures
-    pcs    = getBoard<Player, PWN>(p);
-    pmoves = pawnCaptures<NE, Player>(pcs) & enemy;  // To east.
+    pcs = getBoard<Player, PWN>(p);
+    // Captures to the east.
+    pmoves = (pawnCaptures<NE, Player>(pcs & nopins) |
+              (pawnCaptures<NE, Player>(pcs & pins) & pins)) &
+             enemy;
     while (pmoves) {
       int pos = pop(pmoves);
       moves += MvPiece {pos - RelativeDir<NE, Player>, pos};
     }
-    pmoves = pawnCaptures<NW, Player>(pcs) & enemy;  // To west.
+    // Captures to the west.
+    pmoves = (pawnCaptures<NW, Player>(pcs & nopins) |
+              (pawnCaptures<NW, Player>(pcs & pins) & pins)) &
+             enemy;
     while (pmoves) {
       int pos = pop(pmoves);
       moves += MvPiece {pos - RelativeDir<NW, Player>, pos};

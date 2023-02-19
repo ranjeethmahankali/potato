@@ -1,3 +1,4 @@
+#include "Position.h"
 #define CATCH_CONFIG_MAIN
 #include <Move.h>
 #include <algorithm>
@@ -68,10 +69,12 @@ TEST_CASE("Moves from the start", "[moves][starting]")
 TEST_CASE("Perft From Starting Position", "[perft][starting]")
 {
   Position p;
-  Move(MvPiece {D2, D3}).commit(p);
-  Move(MvPiece {C7, C5}).commit(p);
+  Move(MvPiece {D2, D4}).commit(p);
+  // Move(MvPiece {C7, C6}).commit(p);
+  // Move(MvPiece {E7, E6}).commit(p);
+  // Move(MvPiece {C7, C5}).commit(p);
+  Move(MvPiece {E7, E5}).commit(p);
   std::cout << p.fen() << std::endl;
-  // std::cout << p << std::endl;
   perft(p, 3);
 }
 
