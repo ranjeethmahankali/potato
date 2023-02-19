@@ -1,3 +1,4 @@
+#include <Position.h>
 #include <Util.h>
 #include <View.h>
 #include <chrono>
@@ -25,41 +26,39 @@ static Texture& texture()
   return sTexture;
 }
 
-static std::array<glm::vec4, 256> generateTextureCoords()
+static std::array<glm::vec4, NUniquePieces> generateTextureCoords()
 {
-  std::array<glm::vec4, 256> coords;
-  for (int i = 0; i < 256; ++i) {
-    uint8_t pc = uint8_t(i);
-    pc &= ~(Piece::ENPASSANT | Piece::CASTLE);
-    uint8_t    type  = Piece::type(pc);
-    uint8_t    color = Piece::color(pc);
-    glm::ivec2 pos   = {-1, -1};
-    switch (type) {
-    case Piece::PWN:
+  std::array<glm::vec4, NUniquePieces> coords;
+  for (int i = 0; i < NUniquePieces; ++i) {
+    Piece      pc     = Piece(i);
+    glm::ivec2 pos    = {-1, -1};
+    PieceType  ptype  = type(pc);
+    Color      pcolor = color(pc);
+    switch (ptype) {
+    case PieceType::PWN:
       pos.x = 0;
       break;
-    case Piece::HRS:
+    case PieceType::HRS:
       pos.x = 1;
       break;
-    case Piece::BSH:
+    case PieceType::BSH:
       pos.x = 2;
       break;
-    case Piece::ROK:
+    case PieceType::ROK:
       pos.x = 3;
       break;
-    case Piece::QEN:
+    case PieceType::QEN:
       pos.x = 4;
       break;
-    case Piece::KNG:
+    case PieceType::KNG:
       pos.x = 5;
       break;
     }
-
-    switch (color) {
-    case Piece::WHT:
+    switch (color(pc)) {
+    case Color::WHT:
       pos.y = 0;
       break;
-    case Piece::BLK:
+    case Color::BLK:
       pos.y = 1;
       break;
     }
@@ -140,7 +139,7 @@ Atlas& Atlas::get()
 
 glm::vec4 Atlas::textureCoords(uint8_t piece) const
 {
-  static const std::array<glm::vec4, 256> sCoords = generateTextureCoords();
+  static const std::array<glm::vec4, NUniquePieces> sCoords = generateTextureCoords();
   return sCoords[piece];
 }
 
@@ -328,7 +327,7 @@ void BoardView::update(const Position& b)
   glm::ivec2              pos;
   for (pos.y = 0; pos.y < 8; ++pos.y) {
     for (pos.x = 0; pos.x < 8; ++pos.x) {
-      uint8_t               pc        = b.piece(pos);
+      Piece                 pc        = b.piece(pos);
       glm::vec4             tc        = Atlas::get().textureCoords(pc);
       float                 colorFlag = pc ? 2.f : -1.f;
       std::array<Vertex, 4> quad      = {{
@@ -462,7 +461,7 @@ void start()
       gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
       return;
     }
-    sView = std::make_unique<BoardView>(Position());
+    sView = std::make_unique<BoardView>(currentPosition());
     sShader.init();
     sShader.use();
   }

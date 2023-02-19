@@ -1,129 +1,154 @@
 #pragma once
 
+#include <Tables.h>
 #include <stdint.h>
 #include <array>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <iterator>
 #include <ostream>
+#include <span>
+#include <stack>
 #include <vector>
 
 namespace potato {
 
-struct Piece
+// clang-format off
+enum Square : int
 {
-  // Colors
-  static constexpr uint8_t BLK = 0b01'000;
-  static constexpr uint8_t WHT = 0b10'000;
-  // Piece types. Calling a knight a horse to avoid confusion with king.
-  static constexpr uint8_t PWN = 1;
-  static constexpr uint8_t BSH = 2;
-  static constexpr uint8_t HRS = 3;
-  static constexpr uint8_t ROK = 4;
-  static constexpr uint8_t QEN = 5;
-  static constexpr uint8_t KNG = 6;
-  // Empty
-  static constexpr uint8_t NONE = 0;
-  // States
-  static constexpr uint8_t CASTLE    = 0b01'00'000;
-  static constexpr uint8_t ENPASSANT = 0b10'00'000;
-
-  static uint8_t color(uint8_t piece);
-  static uint8_t type(uint8_t piece);
+  A8 =  0, B8, C8, D8, E8, F8, G8, H8,
+  A7 =  8, B7, C7, D7, E7, F7, G7, H7,
+  A6 = 16, B6, C6, D6, E6, F6, G6, H6,
+  A5 = 24, B5, C5, D5, E5, F5, G5, H5,
+  A4 = 32, B4, C4, D4, E4, F4, G4, H4,
+  A3 = 40, B3, C3, D3, E3, F3, G3, H3,
+  A2 = 48, B2, C2, D2, E2, F2, G2, H2,
+  A1 = 56, B1, C1, D1, E1, F1, G1, H1,
 };
+// clang-format on
+
+static constexpr std::array<std::string_view, 64> SquareCoord = {{
+  "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7",
+  "f7", "g7", "h7", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a5", "b5",
+  "c5", "d5", "e5", "f5", "g5", "h5", "a4", "b4", "c4", "d4", "e4", "f4", "g4",
+  "h4", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a2", "b2", "c2", "d2",
+  "e2", "f2", "g2", "h2", "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+}};
+
+enum Color : uint8_t
+{
+  BLK = 0,
+  WHT = 8,  // Because third bit is used for color.
+};
+
+enum PieceType : uint8_t
+{
+  PWN = 1,
+  HRS = 2,
+  BSH = 3,
+  ROK = 4,
+  QEN = 5,
+  KNG = 6,
+};
+
+enum Piece : uint8_t
+{
+  // Piece types. Calling a knight a horse to avoid confusion with king.
+  B_PWN = 1,
+  B_HRS = 2,
+  B_BSH = 3,
+  B_ROK = 4,
+  B_QEN = 5,
+  B_KNG = 6,
+  W_PWN = 9,
+  W_HRS = 10,
+  W_BSH = 11,
+  W_ROK = 12,
+  W_QEN = 13,
+  W_KNG = 14,
+  // Empty
+  NONE = 0,
+};
+
+static constexpr size_t NUniquePieces = 15;
+
+enum Castle : uint8_t
+{
+  B_LONG  = 1,
+  B_SHORT = 2,
+  W_LONG  = 4,
+  W_SHORT = 8,
+};
+
+union HistoryData
+{
+  Piece  mPiece;
+  int    mEnpassantSquare;
+  Castle mCastlingRights;
+
+  bool operator==(const HistoryData& other) const;
+  bool operator!=(const HistoryData& other) const;
+};
+
+struct History : public std::stack<HistoryData>
+{
+  HistoryData pop();
+
+private:
+  using std::stack<HistoryData>::top;
+};
+
+Color     color(Piece pc);
+PieceType type(Piece pc);
+char      symbol(Piece pc);
 
 class Position
 {
 public:
-  template<bool IsConst>
-  class IteratorT
-  {
-    using BoardRef = std::conditional_t<IsConst, const Position&, Position&>;
-
-  public:
-    using PtrType   = std::conditional_t<IsConst, const uint8_t*, uint8_t*>;
-    using DerefType = std::conditional_t<IsConst, uint8_t, uint8_t&>;
-
-    IteratorT(BoardRef board, glm::ivec2 pos)
-        : mBoard(board)
-        , mPos(pos)
-    {}
-
-    explicit IteratorT(BoardRef board)
-        : IteratorT(board, board.first())
-    {}
-
-    DerefType operator*() { return mBoard.piece(mPos); }
-
-    PtrType operator->() { return mBoard.ptr(mPos); }
-
-    bool operator==(const IteratorT<IsConst>& other) const
-    {
-      return &(other.mBoard) == &mBoard && other.mPos == mPos;
-    }
-
-    bool operator!=(const IteratorT<IsConst>& other) const { return !(*this == other); }
-
-    const IteratorT<IsConst>& operator++()
-    {
-      mPos = mBoard.next(mPos);
-      return *this;
-    }
-
-    IteratorT<IsConst> operator++(int)
-    {
-      IteratorT<IsConst> copy = *this;
-      ++(*this);
-      return copy;
-    }
-
-    glm::ivec2 pos() const { return mPos; }
-
-  private:
-    glm::ivec2 mPos;
-    BoardRef   mBoard;
-  };
-
-  using Iterator      = IteratorT<false>;
-  using ConstIterator = IteratorT<true>;
-
   Position();
-  Position(const Position& other);
-  bool            operator==(const Position& other) const;
-  bool            operator!=(const Position& other) const;
-  uint8_t&        piece(glm::ivec2 pos);
-  uint8_t         piece(glm::ivec2 pos) const;
-  uint8_t*        ptr(glm::ivec2 pos);
-  const uint8_t*  ptr(glm::ivec2 pos) const;
-  glm::ivec2      first() const;
-  glm::ivec2      next(glm::ivec2 pos) const;
-  glm::ivec2      last() const;
+  Position&       put(int pos, Piece pc);
+  Position&       put(glm::ivec2 pos, Piece pc);
+  Position&       put(std::span<const std::pair<int, Piece>> pieces);
+  Position&       remove(int pos);
+  Position&       remove(glm::ivec2 pos);
+  Position&       move(int from, int to);
   Position&       move(glm::ivec2 from, glm::ivec2 to);
-  Position&       setMask(glm::ivec2 pos, uint8_t mask);
-  Position&       clearMask(glm::ivec2 pos, uint8_t mask);
-  Position&       setPiece(glm::ivec2 pos, uint8_t pc);
-  Position&       clearEnpassant();
-  void            genMoves(std::vector<Position>& dst, uint8_t turn) const;
-  Iterator        begin();
-  ConstIterator   begin() const;
-  Iterator        end();
-  ConstIterator   end() const;
+  Piece           piece(int pos) const;
+  Piece           piece(glm::ivec2 pos) const;
+  BitBoard        board(Piece p) const;
+  int             enpassantSq() const;
+  void            setEnpassantSq(int enp);
+  Castle          castlingRights() const;
+  void            setCastlingRights(Castle c);
+  Color           turn() const;
+  void            setTurn(Color turn);
+  void            switchTurn();
   void            clear();
-  size_t          zobristHash() const;
-  bool            inCheck(uint8_t color) const;
+  size_t          hash() const;
+  bool            valid() const;
   std::string     fen() const;
+  History&        history();
+  static Position empty();
   static Position fromFen(const std::string& fen);
 
+  bool operator==(const Position& other) const;
+  bool operator!=(const Position& other) const;
+
 private:
-  union
-  {
-    std::array<uint8_t, 64> mPieces;
-    std::array<uint64_t, 8> mRows;
-  };
-  int     mHalfMoves = 1;
-  int     mFullMoves = 0;
-  uint8_t mTurn      = Piece::WHT;
+  void calcHash();
+
+  std::array<Piece, 64>               mPieces;
+  std::array<BitBoard, NUniquePieces> mBitBoards;
+  History                             mHistory;
+  size_t                              mHash            = 0;
+  int                                 mHalfMoves       = 0;
+  int                                 mMoveCounter     = 1;
+  int                                 mEnPassantSquare = -1;
+  Castle                              mCastlingRights  = Castle(0b1111);
+  Color                               mTurn            = Color::WHT;
 };
 
+void      writeBoard(BitBoard b, std::ostream& os);
 Position& currentPosition();
 int       fileToX(char file);
 int       rankToY(char rank);
@@ -135,19 +160,9 @@ namespace std {
 template<>
 struct hash<potato::Position>
 {
-  size_t operator()(const potato::Position& b) const noexcept { return b.zobristHash(); }
+  size_t operator()(const potato::Position& b) const noexcept { return b.hash(); }
 };
 
 ostream& operator<<(ostream& os, const potato::Position& b);
-
-template<bool IsConst>
-struct iterator_traits<potato::Position::IteratorT<IsConst>>
-{
-  using iterator_type     = uint8_t;
-  using iterator_category = std::forward_iterator_tag;
-  using value_type        = uint8_t;
-  using pointer           = typename potato::Position::IteratorT<IsConst>::PtrType;
-  using reference         = std::conditional_t<IsConst, const uint8_t&, uint8_t&>;
-};
 
 }  // namespace std
