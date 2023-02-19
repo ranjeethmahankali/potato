@@ -24,6 +24,7 @@ add_library(potatolib
   "Position.cpp"
   "Util.cpp"
   "Move.cpp"
+  "UCI.cpp"
 )
 target_link_libraries(potatolib PUBLIC
   glm::glm
