@@ -64,10 +64,24 @@ TEST_CASE("Perft Results", "[moves][starting]")
   REQUIRE(actual == sExpected);
 }
 
+TEST_CASE("Fen Consistency", "[fen][consistency]")
+{
+  /*
+    Inconsistent position:
+    Before: rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2
+    After: rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3
+    Move: b7b5
+  */
+  Position p =
+    Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
+  Move(MvDoublePush<BLK> {B7}).commit(p);
+  REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
+}
+
 TEST_CASE("Perft From Starting Position", "[perft][starting]")
 {
   Position p =
-    Position::fromFen("rn1qkbnr/ppp1pppp/8/8/4p1b1/8/PPPPQPPP/RNBK1BNR w kq - 2 4");
+    Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
   perft(p, 1);
 }
 

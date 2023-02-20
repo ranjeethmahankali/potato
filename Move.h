@@ -386,7 +386,12 @@ void generatePawnPushMoves(const Position& p,
   }
   while (pmoves) {
     int pos = pop(pmoves);
-    moves += MvPiece {pos - Steps * Up, pos};
+    if constexpr (Steps == 1) {
+      moves += MvPiece {pos - Steps * Up, pos};
+    }
+    else {
+      moves += MvDoublePush<Player> {pos - Steps * Up};
+    }
   }
 }
 
@@ -517,8 +522,9 @@ void generateMoves(const Position& p, MoveList& moves)
   case 1: {
     // Can block, or capture the checker. We already generated all possible king moves.
     // Try to capture.
-    auto cpos = lsb(checkers);
-    auto line = Between[cpos][kingPos];
+    auto cpos     = lsb(checkers);
+    bool isSlider = checkers & getBoard<Enemy, BSH, ROK, QEN>(p);
+    auto line     = isSlider ? Between[cpos][kingPos] : checkers;
     // Pawn captures
     generatePawnCaptures<Player, NW>(p, moves, pinned, enemy, checkers, kingPos);
     generatePawnCaptures<Player, NE>(p, moves, pinned, enemy, checkers, kingPos);
