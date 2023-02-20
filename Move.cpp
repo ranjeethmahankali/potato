@@ -213,9 +213,7 @@ std::ostream& operator<<(std::ostream& os, const MvPromote<Player>& m)
 template<Color Player>
 std::ostream& operator<<(std::ostream& os, const MvCapturePromote<Player>& m)
 {
-  os << coord[int(m.mFile) + RelativeRank<Player, 6> * 8]
-     << coord[int(m.mFile) + RelativeRank<Player, 7> * 8 + relativeDir<Player>(m.mSide)]
-     << symbol(m.mPromoted);
+  os << coord[m.mFrom] << coord[m.mTo] << symbol(m.mPromoted);
   return os;
 };
 

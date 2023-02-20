@@ -107,23 +107,19 @@ struct MvPromote
 template<Color Player>
 struct MvCapturePromote
 {
-  uint8_t   mFile;
-  Direction mSide;
-  Piece     mPromoted;
+  int   mFrom;
+  int   mTo;
+  Piece mPromoted;
 
   void commit(Position& p) const
 
   {
-    glm::ivec2 dst = {int(mFile) + relativeDir<Player>(mSide), RelativeRank<Player, 7>};
-    p.history().push({.mPiece = p.piece(dst)});
-    p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 6>}).put(dst, mPromoted);
+    p.history().push({.mPiece = p.piece(mTo)});
+    p.remove(mFrom).put(mTo, mPromoted);
   }
   void revert(Position& p) const
   {
-    p.put(glm::ivec2 {int(mFile) + relativeDir<Player>(mSide), RelativeRank<Player, 7>},
-          p.history().pop().mPiece)
-      .put(glm::ivec2 {int(mFile), RelativeRank<Player, 6>},
-           Piece(uint8_t(Player) | PieceType::PWN));
+    p.put(mTo, p.history().pop().mPiece).put(mFrom, makePiece<Player>(PWN));
   }
 };
 
@@ -288,6 +284,76 @@ BitBoard pawnCaptures(BitBoard b)
   }
 }
 
+template<Color Player, Direction Dir>
+void generatePawnCaptures(const Position& p,
+                          MoveList&       moves,
+                          BitBoard        pinned,
+                          BitBoard        enemy,
+                          int             kingPos)
+{
+  auto pcs = getBoard<Player, PWN>(p);
+  // not pined.
+  auto pmoves = (pawnCaptures<Dir, Player>(pcs & ~pinned)) & enemy;
+  while (pmoves) {
+    int pos = pop(pmoves);
+    moves += MvPiece {pos - RelativeDir<Dir, Player>, pos};
+  }
+  // pinned.
+  pmoves = pawnCaptures<Dir, Player>(pcs & pinned) & enemy;
+  while (pmoves) {
+    int pto   = pop(pmoves);
+    int pfrom = pto - RelativeDir<Dir, Player>;
+    if (LineMask[pfrom][kingPos] & OneHot[pto]) {
+      moves += MvPiece {pfrom, pto};
+    }
+  }
+}
+
+template<Color Player, Direction Dir>
+void generatePawnCapturePromotions(const Position& p,
+                                   MoveList&       moves,
+                                   BitBoard        pinned,
+                                   BitBoard        enemy,
+                                   int             kingPos)
+{
+  static constexpr BitBoard PromotionRank = Rank[RelativeRank<Player, 6> * 8];
+  auto                      pawns  = getBoard<Player, PWN>(p) & PromotionRank & ~pinned;
+  auto                      pmoves = shift<RelativeDir<Dir, Player>>(pawns) & enemy;
+  auto pinnedPawns                 = getBoard<Player, PWN>(p) & PromotionRank & pinned;
+  while (pinnedPawns) {
+    int pos = pop(pinnedPawns);
+    pmoves |=
+      shift<RelativeDir<Dir, Player>>(OneHot[pos]) & enemy & LineMask[pos][kingPos];
+  }
+  while (pmoves) {
+    int to   = pop(pmoves);
+    int from = to - RelativeDir<Dir, Player>;
+    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(QEN)};
+    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(ROK)};
+    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(BSH)};
+    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(HRS)};
+  }
+}
+
+template<Color Player, Direction Dir>
+void generateEnpassant(const Position& p, MoveList& moves, BitBoard pinned, int kingPos)
+{
+  static constexpr Color Enemy = Player == BLK ? WHT : BLK;
+  if (p.enpassantSq() == -1 ||
+      p.piece(p.enpassantSq() + RelativeDir<S, Player>) != makePiece<Enemy>(PWN)) {
+    return;
+  }
+  auto pmoves = shift<RelativeDir<S, Player>>(
+                  shift<RelativeDir<Direction(-Dir), Player>>(OneHot[p.enpassantSq()])) &
+                getBoard<Player, PWN>(p);
+  if (pmoves & pinned) {  // Expecting only one candidate.
+    pmoves &= LineMask[p.enpassantSq()][kingPos];
+  }
+  if (pmoves) {
+    moves += MvEnpassant<Player> {lsb(pmoves), Dir};
+  }
+}
+
 template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
@@ -329,6 +395,7 @@ void generateMoves(const Position& p, MoveList& moves)
     }
   }
   BitBoard pins     = 0;
+  BitBoard pinned   = 0;
   BitBoard checkers = 0;
   {
     checkers |= (KnightMoves[kingPos] & getBoard<Enemy, HRS>(p)) |
@@ -347,6 +414,7 @@ void generateMoves(const Position& p, MoveList& moves)
         break;
       case 1:  // The pin line including the checker
         pins |= line | OneHot[spos];
+        pinned |= line & self;
         break;
       case 2:  // Not in check, not pinned.
         break;
@@ -382,10 +450,16 @@ void generateMoves(const Position& p, MoveList& moves)
     if (p.enpassantSq() == cpos + RelativeDir<N, Player> &&
         p.piece(cpos) == makePiece<Player>(PWN)) {
       attackers = shift<RelativeDir<E, Player>>(checkers) & getBoard<Player, PWN>(p);
+      if (attackers & pinned) {
+        attackers &= LineMask[p.enpassantSq()][kingPos];
+      }
       while (attackers) {
         moves += MvEnpassant<Player> {pop(attackers), W};
       }
       attackers = shift<RelativeDir<W, Player>>(checkers) & getBoard<Player, PWN>(p);
+      if (attackers & pinned) {
+        attackers &= LineMask[p.enpassantSq()][kingPos];
+      }
       while (attackers) {
         moves += MvEnpassant<Player> {pop(attackers), E};
       }
@@ -473,25 +547,10 @@ void generateMoves(const Position& p, MoveList& moves)
       moves += MvDoublePush<Player> {pos - 2 * Up};
     }
     // Pawn captures
-    pcs = getBoard<Player, PWN>(p);
-    // Captures to the east.
-    pmoves = (pawnCaptures<NE, Player>(pcs & nopins) |
-              (pawnCaptures<NE, Player>(pcs & pins) & pins)) &
-             enemy;
-    while (pmoves) {
-      int pos = pop(pmoves);
-      moves += MvPiece {pos - RelativeDir<NE, Player>, pos};
-    }
-    // Captures to the west.
-    pmoves = (pawnCaptures<NW, Player>(pcs & nopins) |
-              (pawnCaptures<NW, Player>(pcs & pins) & pins)) &
-             enemy;
-    while (pmoves) {
-      int pos = pop(pmoves);
-      moves += MvPiece {pos - RelativeDir<NW, Player>, pos};
-    }
+    generatePawnCaptures<Player, NE>(p, moves, pinned, enemy, kingPos);
+    generatePawnCaptures<Player, NW>(p, moves, pinned, enemy, kingPos);
     // Pawn promotions.
-    pcs    = getBoard<Player, PWN>(p) & PromotionRank;
+    pcs    = getBoard<Player, PWN>(p) & PromotionRank & ~pinned;
     pmoves = shift<Up>(pcs) & empty;
     while (pmoves) {
       uint8_t file = uint8_t(pop(pmoves) % 8);
@@ -501,47 +560,11 @@ void generateMoves(const Position& p, MoveList& moves)
       moves += MvPromote<Player> {file, makePiece<Player>(HRS)};
     }
     // Pawn capture promotions.
-    pcs    = getBoard<Player, PWN>(p) & PromotionRank;
-    pmoves = shift<RelativeDir<NE, Player>>(pcs) & enemy;
-    while (pmoves) {
-      uint8_t file = uint8_t(pop(pmoves) % 8);
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(QEN)};
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(ROK)};
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(BSH)};
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<E, Player>, makePiece<Player>(HRS)};
-    }
-    pcs    = getBoard<Player, PWN>(p) & PromotionRank;
-    pmoves = shift<RelativeDir<NW, Player>>(pcs) & enemy;
-    while (pmoves) {
-      uint8_t file = uint8_t(pop(pmoves) % 8);
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(QEN)};
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(ROK)};
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(BSH)};
-      moves +=
-        MvCapturePromote<Player> {file, RelativeDir<W, Player>, makePiece<Player>(HRS)};
-    }
+    generatePawnCapturePromotions<Player, NE>(p, moves, pinned, enemy, kingPos);
+    generatePawnCapturePromotions<Player, NW>(p, moves, pinned, enemy, kingPos);
     // Enpassant
-    if (p.enpassantSq() != -1) {
-      pcs        = getBoard<Player, PWN>(p);
-      int target = p.enpassantSq() + RelativeDir<S, Player>;
-      pmoves =
-        shift<RelativeDir<E, Player>>(OneHot[target] & getBoard<Enemy, PWN>(p)) & pcs;
-      if (pmoves) {
-        moves += MvEnpassant<Player> {lsb(pmoves), W};
-      }
-      pmoves =
-        shift<RelativeDir<W, Player>>(OneHot[target] & getBoard<Enemy, PWN>(p)) & pcs;
-      if (pmoves) {
-        moves += MvEnpassant<Player> {lsb(pmoves), E};
-      }
-    }
+    generateEnpassant<Player, E>(p, moves, pinned, kingPos);
+    generateEnpassant<Player, W>(p, moves, pinned, kingPos);
     // Pinned knights cannot be moved. Only try to move unpinned knights.
     pcs = getBoard<Player, HRS>(p) & nopins;
     while (pcs) {
