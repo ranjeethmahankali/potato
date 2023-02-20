@@ -191,7 +191,7 @@ std::ostream& operator<<(std::ostream& os, const MvPiece& m)
 template<Color Player>
 std::ostream& operator<<(std::ostream& os, const MvEnpassant<Player>& m)
 {
-  os << coord[m.mFrom] << 'x' << coord[m.dest()] << " e.p.";
+  os << coord[m.mFrom] << coord[m.dest()];
   return os;
 };
 
@@ -205,16 +205,17 @@ std::ostream& operator<<(std::ostream& os, const MvDoublePush<Player>& m)
 template<Color Player>
 std::ostream& operator<<(std::ostream& os, const MvPromote<Player>& m)
 {
-  os << coord[m.mFile + RelativeRank<Player, 7> * 8] << '=' << symbol(m.mPromoted);
+  os << coord[m.mFile + RelativeRank<Player, 6> * 8]
+     << coord[m.mFile + RelativeRank<Player, 7> * 8] << symbol(m.mPromoted);
   return os;
 };
 
 template<Color Player>
 std::ostream& operator<<(std::ostream& os, const MvCapturePromote<Player>& m)
 {
-  os << coord[int(m.mFile) + RelativeRank<Player, 6> * 8] << 'x'
+  os << coord[int(m.mFile) + RelativeRank<Player, 6> * 8]
      << coord[int(m.mFile) + RelativeRank<Player, 7> * 8 + relativeDir<Player>(m.mSide)]
-     << '=' << symbol(m.mPromoted);
+     << symbol(m.mPromoted);
   return os;
 };
 

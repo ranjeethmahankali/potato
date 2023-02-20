@@ -214,9 +214,9 @@ void loadFen(int argc, const char** argv)
     .help("The FEN string of the position to be loaded.")
     .required();
   parser.parse_args(argc, argv);
-  auto fen = parser.get<std::string>("fenstr");
-  std::cout << "Received fen string: " << fen << std::endl;
+  auto fen          = parser.get<std::string>("fenstr");
   currentPosition() = Position::fromFen(fen);
+  // This will update the view only if the view is actually open.
   view::update();
 }
 
