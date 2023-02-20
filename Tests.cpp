@@ -68,14 +68,9 @@ TEST_CASE("Moves from the start", "[moves][starting]")
 
 TEST_CASE("Perft From Starting Position", "[perft][starting]")
 {
-  Position p;
-  Move(MvPiece {D2, D4}).commit(p);
-  // Move(MvPiece {C7, C6}).commit(p);
-  // Move(MvPiece {E7, E6}).commit(p);
-  // Move(MvPiece {C7, C5}).commit(p);
-  Move(MvPiece {E7, E5}).commit(p);
-  std::cout << p.fen() << std::endl;
-  perft(p, 3);
+  Position p =
+    Position::fromFen("rnbqk1nr/pppp1ppp/4p3/8/1b1P4/3Q4/PPP1PPPP/RNB1KBNR w KQkq - 2 3");
+  perft(p, 1);
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")

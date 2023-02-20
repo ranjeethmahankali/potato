@@ -402,7 +402,7 @@ void generateMoves(const Position& p, MoveList& moves)
     // Double push pawn blocks.
     blocked =
       shift<Up>(shift<Up>(HomePawnRank & (getBoard<Player, PWN>(p))) & empty) & line;
-    if (blocked) {
+    while (blocked) {
       moves += MvDoublePush<Player> {pop(blocked) - 2 * Up};
     }
     // Knight captures and blocks.
@@ -426,7 +426,7 @@ void generateMoves(const Position& p, MoveList& moves)
         moves += MvPiece {dpos, cpos};
       }
       blocked = dmoves & line;
-      if (blocked) {
+      while (blocked) {
         moves += MvPiece {dpos, pop(blocked)};
       }
     }
@@ -439,7 +439,7 @@ void generateMoves(const Position& p, MoveList& moves)
         moves += MvPiece {opos, cpos};
       }
       blocked = omoves & line;
-      if (blocked) {
+      while (blocked) {
         moves += MvPiece {opos, pop(blocked)};
       }
     }
