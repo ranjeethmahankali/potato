@@ -26,7 +26,7 @@ static constexpr Direction RelativeDir = col == Color::WHT ? Direction(-dir) : d
 template<Color Col>
 inline Direction relativeDir(Direction dir)
 {
-  if constexpr (Col) {
+  if constexpr (Col == BLK) {
     return dir;
   }
   else {
@@ -36,6 +36,12 @@ inline Direction relativeDir(Direction dir)
 
 template<Color col, int rank>
 static constexpr int RelativeRank = col == Color::WHT ? (7 - rank) : rank;
+
+template<Color Player>
+Piece makePiece(PieceType type)
+{
+  return Piece(uint8_t(Player) | type);
+}
 
 struct MvPiece
 {
@@ -57,8 +63,8 @@ struct MvEnpassant
   void commit(Position& p) const { p.move(mFrom, dest()).remove(target()); }
   void revert(Position& p) const
   {
-    static constexpr Color Enemy = Color(~Player);
-    p.move(dest(), mFrom).put(target(), Piece(uint8_t(Enemy) | PieceType::PWN));
+    static constexpr Color Enemy = Player == WHT ? BLK : WHT;
+    p.move(dest(), mFrom).put(target(), makePiece<Enemy>(PWN));
   }
 };
 
@@ -245,12 +251,6 @@ BitBoard bishopMoves(int sq, BitBoard blockers);
 BitBoard rookMoves(int sq, BitBoard blockers);
 BitBoard queenMoves(int sq, BitBoard blockers);
 
-template<Color Player>
-Piece makePiece(PieceType type)
-{
-  return Piece(uint8_t(Player) | type);
-}
-
 template<Color Player, PieceType... Types>
 BitBoard getBoard(const Position& p)
 {
@@ -386,11 +386,11 @@ void generateMoves(const Position& p, MoveList& moves)
         p.piece(cpos) == makePiece<Player>(PWN)) {
       attackers = shift<RelativeDir<E, Player>>(checkers) & getBoard<Player, PWN>(p);
       while (attackers) {
-        moves += MvEnpassant<Player> {pop(attackers), RelativeDir<W, Player>};
+        moves += MvEnpassant<Player> {pop(attackers), W};
       }
       attackers = shift<RelativeDir<W, Player>>(checkers) & getBoard<Player, PWN>(p);
       while (attackers) {
-        moves += MvEnpassant<Player> {pop(attackers), RelativeDir<E, Player>};
+        moves += MvEnpassant<Player> {pop(attackers), E};
       }
     }
     // Single push pawn blocks.
@@ -537,12 +537,12 @@ void generateMoves(const Position& p, MoveList& moves)
       pmoves =
         shift<RelativeDir<E, Player>>(OneHot[target] & getBoard<Enemy, PWN>(p)) & pcs;
       if (pmoves) {
-        moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<W, Player>};
+        moves += MvEnpassant<Player> {lsb(pmoves), W};
       }
       pmoves =
         shift<RelativeDir<W, Player>>(OneHot[target] & getBoard<Enemy, PWN>(p)) & pcs;
       if (pmoves) {
-        moves += MvEnpassant<Player> {lsb(pmoves), RelativeDir<E, Player>};
+        moves += MvEnpassant<Player> {lsb(pmoves), E};
       }
     }
     // Pinned knights cannot be moved. Only try to move unpinned knights.

@@ -19,11 +19,12 @@ static void push(const MoveList&                      mlist,
   }
 }
 
-TEST_CASE("Moves from the start", "[moves][starting]")
+TEST_CASE("Perft Results", "[moves][starting]")
 {
-  static constexpr size_t                    Depth     = 4;
-  static constexpr std::array<size_t, Depth> sExpected = {{20, 400, 8902, 197281}};
-  std::array<size_t, Depth>                  actual;
+  static constexpr size_t                    Depth     = 6;
+  static constexpr std::array<size_t, Depth> sExpected = {
+    {20, 400, 8902, 197281, 4865609, 119060234}};
+  std::array<size_t, Depth> actual;
   std::fill(actual.begin(), actual.end(), 0);
   Position                            p;
   MoveList                            mlist;
@@ -36,12 +37,9 @@ TEST_CASE("Moves from the start", "[moves][starting]")
       auto mvd = moves.top();
       moves.pop();
       while (mvd.second <= current.size()) {
-        // std::cout << p << "\nReverting " << current.top() << std::endl;
         current.top().revert(p);
-        // std::cout << p << std::endl;
         current.pop();
         positions.pop();
-        // Make sure the position is accurate after reverting.
         REQUIRE(p == positions.top());
       }
       // std::cout << "Commiting " << mvd.first << std::endl;
@@ -69,7 +67,7 @@ TEST_CASE("Moves from the start", "[moves][starting]")
 TEST_CASE("Perft From Starting Position", "[perft][starting]")
 {
   Position p =
-    Position::fromFen("rnbqk1nr/pppp1ppp/4p3/8/1b1P4/3Q4/PPP1PPPP/RNB1KBNR w KQkq - 2 3");
+    Position::fromFen("rnbqkb1r/pppppp1p/7n/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 1");
   perft(p, 1);
 }
 
