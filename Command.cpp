@@ -1,8 +1,10 @@
 #include <ArgVSplit.h>
 #include <Command.h>
+#include <Move.h>
 #include <Position.h>
 #include <View.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <argparse/argparse.hpp>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -184,12 +186,6 @@ void run(const std::string& cmd)
   }
 }
 
-struct ArgDesc
-{
-  std::string_view name;
-  std::string_view desc;
-};
-
 namespace funcs {
 
 // void move(int argc, const char** argv)
@@ -213,14 +209,27 @@ namespace funcs {
 
 void loadFen(int argc, const char** argv)
 {
-  // static auto opts =
-  //   optionsWithPosnArgs<std::string>("fen",
-  //                                    "Loads the board from the given FEN notation.",
-  //                                    {{"fenstr", "The FEN string"}});
-  // auto        parsed = parseOptions(argc, argv, opts);
-  // std::string fen    = parsed.value()["fenstr"].as<std::string>();
-  // currentPosition()  = Position::fromFen(fen);
-  // view::update();
+  argparse::ArgumentParser parser("fen");
+  parser.add_argument("fenstr")
+    .help("The FEN string of the position to be loaded.")
+    .required();
+  parser.parse_args(argc, argv);
+  auto fen = parser.get<std::string>("fenstr");
+  std::cout << "Received fen string: " << fen << std::endl;
+  currentPosition() = Position::fromFen(fen);
+  view::update();
+}
+
+void perft(int argc, const char** argv)
+{
+  argparse::ArgumentParser parser("perft");
+  parser.add_argument("depth")
+    .help("The depth to traverse when counting moves.")
+    .required()
+    .scan<'i', int>();
+  parser.parse_args(argc, argv);
+  int depth = parser.get<int>("depth");
+  potato::perft(currentPosition(), depth);
 }
 
 }  // namespace funcs
@@ -229,6 +238,7 @@ void init()
 {
   // cmdFuncMap().emplace("move", funcs::move);
   cmdFuncMap().emplace("fen", funcs::loadFen);
+  cmdFuncMap().emplace("perft", funcs::perft);
 }
 
 }  // namespace command

@@ -12,7 +12,6 @@ static void gameLoop()
   std::string input;
   bool        running = true;
   while (running && !view::closed()) {
-    std::cout << ">>> ";
     std::getline(std::cin, input);
     if (input.empty())
       continue;
