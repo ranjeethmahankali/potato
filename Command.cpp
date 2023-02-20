@@ -3,7 +3,6 @@
 #include <Position.h>
 #include <View.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <cxxopts.hpp>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -191,60 +190,6 @@ struct ArgDesc
   std::string_view desc;
 };
 
-template<size_t I, typename... Ts>
-void addOptions(cxxopts::OptionAdder& adder, const std::initializer_list<ArgDesc>& args)
-{
-  using Type = std::tuple_element_t<I, std::tuple<Ts...>>;
-
-  if constexpr (I < sizeof...(Ts)) {
-    const auto& arg = *(args.begin() + I);
-    adder(arg.name.data(), arg.desc.data(), cxxopts::value<Type>(), arg.name.data());
-  }
-
-  if constexpr (I + 1 < sizeof...(Ts)) {
-    addOptions<I + 1, Ts...>(adder, args);
-  }
-}
-
-cxxopts::Options optionsWithoutArgs(const std::string_view& name,
-                                    const std::string_view& desc)
-{
-  cxxopts::Options opts(name.data(), desc.data());
-  opts.allow_unrecognised_options().add_options()("help", "Print help");
-  return opts;
-}
-
-template<typename... Ts>
-cxxopts::Options optionsWithPosnArgs(const std::string_view&               name,
-                                     const std::string_view&               desc,
-                                     const std::initializer_list<ArgDesc>& args)
-{
-  if (!(sizeof...(Ts) == 1 || args.size() == sizeof...(Ts))) {
-    logger().error("Incorrect number of argument types for the options parser.");
-  }
-  auto opts  = optionsWithoutArgs(name, desc);
-  auto adder = opts.add_options();
-  addOptions<0, Ts...>(adder, args);
-  std::vector<std::string> argNames(args.size());
-  std::transform(args.begin(), args.end(), argNames.begin(), [](const auto& pair) {
-    return pair.name;
-  });
-  opts.parse_positional(argNames);
-  return opts;
-}
-
-std::optional<cxxopts::ParseResult> parseOptions(int               argc,
-                                                 const char**      argv,
-                                                 cxxopts::Options& opts)
-{
-  auto parsed = opts.parse(argc, argv);
-  if (parsed.count("help")) {
-    logger().info(opts.help());
-    return std::nullopt;
-  }
-  return parsed;
-}
-
 namespace funcs {
 
 // void move(int argc, const char** argv)
@@ -268,14 +213,14 @@ namespace funcs {
 
 void loadFen(int argc, const char** argv)
 {
-  static auto opts =
-    optionsWithPosnArgs<std::string>("fen",
-                                     "Loads the board from the given FEN notation.",
-                                     {{"fenstr", "The FEN string"}});
-  auto        parsed = parseOptions(argc, argv, opts);
-  std::string fen    = parsed.value()["fenstr"].as<std::string>();
-  currentPosition()  = Position::fromFen(fen);
-  view::update();
+  // static auto opts =
+  //   optionsWithPosnArgs<std::string>("fen",
+  //                                    "Loads the board from the given FEN notation.",
+  //                                    {{"fenstr", "The FEN string"}});
+  // auto        parsed = parseOptions(argc, argv, opts);
+  // std::string fen    = parsed.value()["fenstr"].as<std::string>();
+  // currentPosition()  = Position::fromFen(fen);
+  // view::update();
 }
 
 }  // namespace funcs

@@ -3,7 +3,6 @@
 #include <Position.h>
 #include <Util.h>
 #include <View.h>
-#include <cxxopts.hpp>
 #include <iostream>
 
 using namespace potato;
