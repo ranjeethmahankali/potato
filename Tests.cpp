@@ -23,7 +23,7 @@ TEST_CASE("Perft Results", "[moves][starting]")
 {
   static constexpr size_t                    Depth     = 6;
   static constexpr std::array<size_t, Depth> sExpected = {
-    {20, 400, 8902, 197281, 4865609, 119060234}};
+    {20, 400, 8902, 197281, 4865609, 119060324}};
   std::array<size_t, Depth> actual;
   std::fill(actual.begin(), actual.end(), 0);
   Position                            p;
@@ -67,7 +67,7 @@ TEST_CASE("Perft Results", "[moves][starting]")
 TEST_CASE("Perft From Starting Position", "[perft][starting]")
 {
   Position p =
-    Position::fromFen("rnbqkb1r/pppppp1p/7n/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 1");
+    Position::fromFen("rn1qkbnr/ppp1pppp/8/8/4p1b1/8/PPPPQPPP/RNBK1BNR w kq - 2 4");
   perft(p, 1);
 }
 

@@ -97,5 +97,5 @@ class PositionTree:
             r.compare()
 
 
-r = PositionTree("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5)
+r = PositionTree("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7)
 r.compare()

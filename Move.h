@@ -341,9 +341,6 @@ void generateMoves(const Position& p, MoveList& moves)
     while (sliders) {
       int  spos = pop(sliders);
       auto line = Between[spos][kingPos];
-      if (!line) {  // No line of sight.
-        continue;
-      }
       switch (std::popcount(line & self)) {
       case 0:  // The king is in check
         checkers |= OneHot[spos];
