@@ -60,7 +60,11 @@ struct MvEnpassant
 
   int  target() const { return mFrom + relativeDir<Player>(mSide); }
   int  dest() const { return target() + RelativeDir<N, Player>; }
-  void commit(Position& p) const { p.move(mFrom, dest()).remove(target()); }
+  void commit(Position& p) const
+  {
+    p.resetHalfMoveCount();
+    p.move(mFrom, dest()).remove(target());
+  }
   void revert(Position& p) const
   {
     static constexpr Color Enemy = Player == WHT ? BLK : WHT;
@@ -77,6 +81,7 @@ struct MvDoublePush
 
   void commit(Position& p) const
   {
+    p.resetHalfMoveCount();
     int d = dest();
     p.move(mFrom, d);
     p.setEnpassantSq(d - RelativeDir<N, Player>);
@@ -93,6 +98,7 @@ struct MvPromote
   void commit(Position& p) const
 
   {
+    p.resetHalfMoveCount();
     p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 6>})
       .put(glm::ivec2 {int(mFile), RelativeRank<Player, 7>}, mPromoted);
   }
@@ -114,6 +120,7 @@ struct MvCapturePromote
   void commit(Position& p) const
 
   {
+    p.resetHalfMoveCount();
     p.history().push({.mPiece = p.piece(mTo)});
     p.remove(mFrom).put(mTo, mPromoted);
   }

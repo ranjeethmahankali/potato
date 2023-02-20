@@ -11,7 +11,12 @@ const Move::VariantType& Move::value() const
 
 void MvPiece::commit(Position& p) const
 {
-  p.history().push({.mPiece = p.piece(mTo)});
+  Piece old = p.piece(mTo);
+  if (old != Piece::NONE || type(p.piece(mFrom)) == PWN) {
+    // Captures and pawn pushes reset the halfmove counter.
+    p.resetHalfMoveCount();
+  }
+  p.history().push({.mPiece = old});
   p.move(mFrom, mTo);
 }
 
@@ -25,13 +30,21 @@ void Move::commit(Position& p) const
   p.history().push({.mEnpassantSquare = p.enpassantSq()});
   p.setEnpassantSq(-1);
   p.history().push({.mCastlingRights = p.castlingRights()});
+  p.history().push({.mCounter = p.moveCount()});
+  p.history().push({.mCounter = p.halfMoveCount()});
+  p.incrementHalfMoveCount();
   std::visit([&p](auto& mv) { mv.commit(p); }, mVar);
+  if (p.turn() == BLK) {
+    p.incrementMoveCounter();
+  }
   p.switchTurn();
 }
 
 void Move::revert(Position& p) const
 {
   std::visit([&p](auto& mv) { mv.revert(p); }, mVar);
+  p.setHalfMoveCount(p.history().pop().mCounter);
+  p.setMoveCount(p.history().pop().mCounter);
   p.setCastlingRights(p.history().pop().mCastlingRights);
   p.setEnpassantSq(p.history().pop().mEnpassantSquare);
   p.switchTurn();
