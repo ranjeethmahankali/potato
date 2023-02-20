@@ -244,6 +244,22 @@ def between(x1, y1, x2, y2):
         return b
 
 
+def line(x1, y1, x2, y2):
+    """Get a board with an unbounded line between two squares."""
+    if x1 == x2 and y1 == y2:
+        return Board()
+    elif x1 == x2:
+        return fileMask(x1, y1)
+    elif y1 == y2:
+        return rankMask(x1, y1)
+    elif y1 - x1 == y2 - x2:
+        return diagonalMask(x1, y1)
+    elif x1 + y1 == x2 + y2:
+        return antiDiagonalMask(x1, y1)
+    else:
+        return Board()
+
+
 def castleEmptyMasks():
     """Generate mask for squares that need to be empty for castling."""
     b = [Board() for _ in range(4)]
@@ -314,6 +330,8 @@ if __name__ == "__main__":
     printBoardArray(table(antiDiagonalMask), "AntiDiagonal")
     print("")
     print2dBoardArray(table2d(between), "Between")
+    print("")
+    print2dBoardArray(table2d(line), "LineMask")
     print("")
     printBoardArray(table(knightMovesMask), "KnightMoves")
     print("")
