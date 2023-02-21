@@ -162,3 +162,108 @@ TEST_CASE("Move generation test 16", "[move-gen][case-16]")
               6,
               {{40, 809, 28447, 607528, 20865139, 450840527}});
 }
+
+TEST_CASE("Move generation test 17", "[move-gen][case-17]")
+{
+  doPerftTest("8/8/1k6/8/6K1/8/8/8 w - - 0 1", 6, {{8, 64, 440, 2995, 21700, 147458}});
+}
+
+TEST_CASE("Move generation test 18", "[move-gen][case-18]")
+{
+  doPerftTest(
+    "8/8/8/4K3/8/8/3bk3/8 w - - 0 1", 6, {{7, 107, 701, 10557, 70227, 1044208}});
+}
+
+TEST_CASE("Move generation test 19", "[move-gen][case-19]")
+{
+  doPerftTest("8/8/8/8/8/8/K1kP1p2/8 w - - 0 1", 6, {{4, 36, 144, 1627, 7533, 103947}});
+}
+
+TEST_CASE("Move generation test 20", "[move-gen][case-20]")
+{
+  doPerftTest(
+    "8/8/8/2k4N/8/1r6/5p2/5K2 w - - 0 1", 6, {{7, 159, 1356, 27530, 242599, 4986912}});
+}
+
+TEST_CASE("Move generation test 21", "[move-gen][case-21]")
+{
+  doPerftTest(
+    "6b1/7q/8/2K5/1P6/5P2/3k4/8 w - - 0 1", 6, {{7, 235, 1331, 44431, 252433, 8331669}});
+}
+
+TEST_CASE("Move generation test 22", "[move-gen][case-22]")
+{
+  doPerftTest("8/2K1n3/3P4/6k1/8/p7/4P3/5R2 w - - 0 1",
+              6,
+              {{23, 271, 5491, 63225, 1261844, 14718791}});
+}
+
+TEST_CASE("Move generation test 23", "[move-gen][case-23]")
+{
+  doPerftTest("8/4r3/8/4p3/8/1p2P3/6P1/1N1k1K2 w - - 0 1",
+              6,
+              {{8, 96, 831, 12453, 119134, 1926544}});
+}
+
+TEST_CASE("Move generation test 24", "[move-gen][case-24]")
+{
+  doPerftTest("8/2n5/3p4/3r4/KN6/5B1p/1k5n/8 w - - 0 1",
+              6,
+              {{14, 291, 4054, 87619, 1230824, 27248921}});
+}
+
+TEST_CASE("Move generation test 25", "[move-gen][case-25]")
+{
+  doPerftTest("8/5k2/1P6/7p/p7/B1P2p2/R5N1/1K6 w - - 0 1",
+              6,
+              {{23, 207, 4858, 43599, 1023025, 9444084}});
+}
+
+TEST_CASE("Move generation test 26", "[move-gen][case-26]")
+{
+  doPerftTest("b4bq1/1p3r2/2p1P3/P2k4/8/8/4P3/1K6 w - - 0 1",
+              6,
+              {{10, 324, 3101, 105300, 1034365, 35775794}});
+}
+
+TEST_CASE("Move generation test 27", "[move-gen][case-27]")
+{
+  doPerftTest("3Q4/8/7p/n5N1/P1b1K3/q5p1/1P2k3/B7 w - - 0 1",
+              6,
+              {{31, 884, 22176, 629919, 15119886, 430812288}});
+}
+
+TEST_CASE("Move generation test 28", "[move-gen][case-28]")
+{
+  doPerftTest("Q5R1/1p4P1/4K2p/1r6/1q6/8/PPP5/3kN3 w - - 0 1",
+              6,
+              {{28, 837, 19186, 605839, 15318551, 477296703}});
+}
+
+TEST_CASE("Move generation test 29", "[move-gen][case-29]")
+{
+  doPerftTest("n7/R4p2/3Kpk2/3P4/4Q3/1Br3P1/5P2/4b2b w - - 0 1",
+              6,
+              {{43, 809, 29469, 622040, 20890188, 471809369}});
+}
+
+TEST_CASE("Move generation test 30", "[move-gen][case-30]")
+{
+  doPerftTest("8/7R/4P1pr/8/n3pB2/k4r1P/2P3p1/n1K1Q3 w - - 0 1",
+              6,
+              {{40, 978, 32796, 854403, 27019441, 731173852}});
+}
+
+TEST_CASE("Move generation test 31", "[move-gen][case-31]")
+{
+  doPerftTest("q3R1B1/2bk2P1/3p3p/QP2p3/3P3K/p4b2/8/4R3 w - - 0 1",
+              6,
+              {{41, 1117, 42164, 1069525, 41132104, 1028636700}});
+}
+
+TEST_CASE("Move generation test 32", "[move-gen][case-32]")
+{
+  doPerftTest("5B2/2k2q2/B7/3PppR1/1P1pP2K/P1n1P3/P7/3N4 w - - 0 1",
+              6,
+              {{31, 809, 22432, 576953, 15497096, 393452066}});
+}
