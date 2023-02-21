@@ -44,7 +44,8 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
 
 // TEST_CASE("Perft From Starting Position", "[perft][debug]")
 // {
-//   Position p = Position::fromFen("2r5/8/p6p/1p2R3/8/2P2k2/PP3P1P/3R2K1 b - - 2 31");
+//   Position p =
+//     Position::fromFen("1nq1n3/1P3b1p/p2p2kp/6P1/4p1K1/1P2r3/2N5/rB6 w - - 1 3");
 //   std::cout << p << std::endl;
 //   perft(p, 1);
 // }

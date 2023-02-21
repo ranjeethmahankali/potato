@@ -224,7 +224,9 @@ void generatePawnCaptures(const Position& p,
                           BitBoard        mask,
                           int             kingPos)
 {
-  auto pcs = getBoard<Player, PWN>(p);
+  static constexpr BitBoard Rank7 = Rank[RelativeRank<Player, 6> * 8];
+  // Ignore rank7 captures because they'll be handled as capture-promotions.
+  auto pcs = getBoard<Player, PWN>(p) & ~Rank7;
   // not pined.
   auto pmoves = (shift<RelativeDir<Dir, Player>>(pcs & ~pinned)) & enemy;
   if (mask) {
@@ -307,8 +309,10 @@ void generatePawnPushMoves(const Position& p,
 {
   static_assert(Steps == 1 || Steps == 2, "Only single or double push allowed");
   static constexpr BitBoard  HomePawnRank = Rank[RelativeRank<Player, 1> * 8];
+  static constexpr BitBoard  Rank7        = Rank[RelativeRank<Player, 6> * 8];
   static constexpr Direction Up           = RelativeDir<N, Player>;
-  BitBoard                   pawns        = getBoard<Player, PWN>(p);
+  // Ignore rank 7 because their pushes will be handled as promotions.
+  BitBoard pawns = getBoard<Player, PWN>(p) & ~Rank7;
   if constexpr (Steps == 2) {
     pawns &= HomePawnRank;
   }
@@ -475,6 +479,8 @@ void generateMoves(const Position& p, MoveList& moves)
     // Pawn captures
     generatePawnCaptures<Player, NW>(p, moves, pinned, enemy, checkers, kingPos);
     generatePawnCaptures<Player, NE>(p, moves, pinned, enemy, checkers, kingPos);
+    generatePawnCapturePromotions<Player, NW>(p, moves, pinned, enemy, checkers, kingPos);
+    generatePawnCapturePromotions<Player, NE>(p, moves, pinned, enemy, checkers, kingPos);
     // Enpassant captures.
     if (p.enpassantSq() == cpos + RelativeDir<N, Player> &&
         p.piece(cpos) == makePiece<Player>(PWN)) {
