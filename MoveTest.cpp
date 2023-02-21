@@ -267,3 +267,59 @@ TEST_CASE("Move generation test 32", "[move-gen][case-32]")
               6,
               {{31, 809, 22432, 576953, 15497096, 393452066}});
 }
+
+TEST_CASE("Move generation test 33", "[move-gen][case-33]")
+{
+  doPerftTest("rnbqkb1r/p1p2ppp/1p2pn2/3p4/2P5/P1N1P3/1P1P1PPP/R1BQKBNR w KQkq - 0 5",
+              6,
+              {{36, 1194, 41706, 1416130, 48927843, 1695942724}});
+}
+
+TEST_CASE("Move generation test 34", "[move-gen][case-34]")
+{
+  doPerftTest("r1bqkb1r/pp1p1ppp/2n1pn2/2p5/4P3/N1P2N2/PP1P1PPP/R1BQKB1R w KQkq - 2 5",
+              6,
+              {{31, 986, 31965, 1039656, 34650033, 1150572351}});
+}
+
+TEST_CASE("Move generation test 35", "[move-gen][case-35]")
+{
+  doPerftTest("rnbqkb1r/ppp2p1p/3p1np1/4p3/2P5/2NPP3/PP3PPP/R1BQKBNR w KQkq - 0 5",
+              6,
+              {{35, 1124, 38460, 1255199, 42621450, 1417116896}});
+}
+
+TEST_CASE("Move generation test 36", "[move-gen][case-36]")
+{
+  doPerftTest("rnbqkb1r/1p2pppp/2p2n2/p2p4/2PP4/5N2/PP1NPPPP/R1BQKB1R w KQkq - 0 5",
+              6,
+              {{24, 740, 19613, 614147, 17679277, 570316490}});
+}
+
+TEST_CASE("Move generation test 37", "[move-gen][case-37]")
+{
+  doPerftTest("rnbqkbnr/p2p1p1p/1p2p1p1/2p5/8/1P1P1NP1/P1P1PP1P/RNBQKB1R w KQkq - 0 5",
+              6,
+              {{32, 922, 28884, 855057, 26884650, 823209297}});
+}
+
+TEST_CASE("Move generation test 38", "[move-gen][case-38]")
+{
+  doPerftTest("rnbqkbnr/1p1p1p1p/p3p1p1/2p5/2B1P3/3P3P/PPP2PP1/RNBQK1NR w KQkq - 0 5",
+              6,
+              {{36, 1010, 35944, 1021677, 36717409, 1075053157}});
+}
+
+TEST_CASE("Move generation test 39", "[move-gen][case-39]")
+{
+  doPerftTest("rnbqk2r/p1ppppbp/1p3np1/8/3P4/1P3N2/PBP1PPPP/RN1QKB1R w KQkq - 0 5",
+              6,
+              {{28, 753, 21943, 618608, 18819585, 550948819}});
+}
+
+TEST_CASE("Move generation test 40", "[move-gen][case-40]")
+{
+  doPerftTest("r1bqkb1r/pp1p1ppp/2n1pn2/2p5/4P3/2P2N2/PPQP1PPP/RNB1KB1R w KQkq - 0 5",
+              6,
+              {{30, 956, 30155, 985528, 31961366, 1067938803}});
+}
