@@ -45,12 +45,7 @@ static void doPerftTest(const std::string&      fenstr,
       current.push(mvd.first);
     }
     if (current.size() < depth) {
-      if (p.turn() == WHT) {
-        generateMoves<WHT>(p, mlist);
-      }
-      else {
-        generateMoves<BLK>(p, mlist);
-      }
+      generateMoves(p, mlist);
       actual[current.size()] += mlist.size();
       if (current.size() + 1 < depth) {
         push(mlist, moves, current.size() + 1);
@@ -134,8 +129,8 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
 
 TEST_CASE("Perft From Starting Position", "[perft][debug]")
 {
-  Position p =
-    Position::fromFen("r1bqkb1r/ppp2ppp/2n5/1B1p4/4n3/P4N2/1PP2pPP/RN1Q1RK1 w kq - 0 9");
+  Position p = Position::fromFen("2r5/8/p6p/1p2R3/8/2P2k2/PP3P1P/3R2K1 b - - 2 31");
+  std::cout << p << std::endl;
   perft(p, 1);
 }
 
