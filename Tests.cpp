@@ -51,7 +51,9 @@ static void doPerftTest(const std::string&      fenstr,
         generateMoves<BLK>(p, mlist);
       }
       actual[current.size()] += mlist.size();
-      push(mlist, moves, current.size() + 1);
+      if (current.size() + 1 < depth) {
+        push(mlist, moves, current.size() + 1);
+      }
       mlist.clear();
     }
   } while (!moves.empty());
@@ -70,12 +72,9 @@ TEST_CASE("Perft Results 1", "[perft][starting][case-1]")
 
 TEST_CASE("Perft Results 2", "[perft][starting][case-2]")
 {
-  // doPerftTest("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6",
-  //             6,
-  //             {{38, 1357, 51428, 1842992, 71427276, 2584961600}});
   doPerftTest("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6",
-              5,
-              {{38, 1357, 51428, 1842992, 71427276}});
+              6,
+              {{38, 1357, 51428, 1842992, 71427276, 2584961600}});
 }
 
 TEST_CASE("Fen Consistency", "[fen][consistency]")
@@ -107,7 +106,7 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
 TEST_CASE("Perft From Starting Position", "[perft][debug]")
 {
   Position p =
-    Position::fromFen("r1bq1b1r/pppk1ppp/2n5/1B1pN3/3Pn3/8/PPP2PPP/RNBQ1RK1 b - - 0 7");
+    Position::fromFen("r1bqkb1r/ppp2ppp/2n5/1B1p4/4n3/P4N2/1PP2pPP/RN1Q1RK1 w kq - 0 9");
   perft(p, 1);
 }
 
