@@ -66,15 +66,17 @@ class PositionTree:
             and not ln.startswith('[') and not ln.startswith('Total')
         ])
         pairs = [ln.split(": ") for ln in lines]
+        if (len(pairs) != len(set([p[0] for p in pairs]))):
+            print(f"{self.indent()}!!! Repeated move.")
         return {p[0]: int(p[1]) for p in pairs}
 
     def compare(self):
         """Compare the results of stockfish and potato."""
+        print(f"{self.indent()}Comparing fen: {self.fen}")
         fdata = self.perftFish()
         pdata = self.perftPotato()
         problems = []
         success = True
-        print(f"{self.indent()}Comparing fen: {self.fen}")
         for move in fdata:
             if move not in pdata:
                 success = False
@@ -107,7 +109,7 @@ class PositionTree:
                 success = False
 
 
-r = PositionTree("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5)
+r = PositionTree("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7)
 # r = PositionTree("rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR b KQkq - 0 1",
 #                  5)
 r.compare()

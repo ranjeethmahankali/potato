@@ -509,7 +509,7 @@ void generateMoves(const Position& p, MoveList& moves)
       case 0:  // The king is in check
         checkers |= OneHot[spos];
         break;
-      case 1:  // The pin line including the checker
+      case 1:
         pinned |= line & self;
         break;
       case 2:  // Not in check, not pinned.
@@ -531,7 +531,8 @@ void generateMoves(const Position& p, MoveList& moves)
     // Try to capture.
     auto cpos     = lsb(checkers);
     bool isSlider = checkers & getBoard<Enemy, BSH, ROK, QEN>(p);
-    auto line     = isSlider ? Between[cpos][kingPos] : checkers;
+    auto line     = isSlider ? Between[cpos][kingPos] : 0;
+    line |= checkers;
     // Pawn captures
     generatePawnCaptures<Player, NW>(p, moves, pinned, enemy, checkers, kingPos);
     generatePawnCaptures<Player, NE>(p, moves, pinned, enemy, checkers, kingPos);
@@ -559,13 +560,10 @@ void generateMoves(const Position& p, MoveList& moves)
     // Knight captures and blocks.
     auto attackers = getBoard<Player, HRS>(p);
     while (attackers) {
-      int hpos = pop(attackers);
-      if (KnightMoves[hpos] & checkers) {
-        moves += MvPiece {hpos, cpos};
-      }
-      auto blocked = KnightMoves[hpos] & line;
-      while (blocked) {
-        moves += MvPiece {hpos, pop(blocked)};
+      int  hpos   = pop(attackers);
+      auto hmoves = KnightMoves[hpos] & (checkers | line);
+      while (hmoves) {
+        moves += MvPiece {hpos, pop(hmoves)};
       }
     }
     generateDiagSlides<Player>(p, moves, pinned, all, notself, line, kingPos);

@@ -66,22 +66,29 @@ TEST_CASE("Perft Results", "[moves][starting]")
 
 TEST_CASE("Fen Consistency", "[fen][consistency]")
 {
-  /*
-    Inconsistent position:
-    Before: rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2
-    After: rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3
-    Move: b7b5
-  */
-  Position p =
-    Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
-  Move(MvDoublePush<BLK> {B7}).commit(p);
-  REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
+  SECTION("Case 1")
+  {
+    Position p =
+      Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
+    Move(MvDoublePush<BLK> {B7}).commit(p);
+    REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
+  }
+
+  SECTION("Case 2")
+  {
+    Position p =
+      Position::fromFen("rnbqkbnr/pppp1ppp/4p3/8/5P2/5N2/PPPPP1PP/RNBQKB1R b KQkq - 1 2");
+    std::cout << p << std::endl;
+    Move(MvPiece {D8, H4}).commit(p);
+    std::cout << p << std::endl;
+    REQUIRE(p.fen() == "rnb1kbnr/pppp1ppp/4p3/8/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
+  }
 }
 
-TEST_CASE("Perft From Starting Position", "[perft][starting]")
+TEST_CASE("Perft From Starting Position", "[perft]")
 {
   Position p =
-    Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
+    Position::fromFen("rnb1kbnr/pppp1ppp/8/4p3/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
   perft(p, 1);
 }
 
