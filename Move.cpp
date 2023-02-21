@@ -483,7 +483,7 @@ void generateMoves(const Position& p, MoveList& moves)
     generatePawnCapturePromotions<Player, NE>(p, moves, pinned, enemy, checkers, kingPos);
     // Enpassant captures.
     if (p.enpassantSq() == cpos + RelativeDir<N, Player> &&
-        p.piece(cpos) == makePiece<Player>(PWN)) {
+        p.piece(cpos) == makePiece<Enemy>(PWN)) {
       auto attackers = shift<RelativeDir<E, Player>>(checkers) & getBoard<Player, PWN>(p);
       if (attackers & pinned) {
         attackers &= LineMask[p.enpassantSq()][kingPos];
