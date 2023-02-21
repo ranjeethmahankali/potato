@@ -199,6 +199,7 @@ struct MoveList
   const Move*     end() const;
   size_t          size() const;
   void            clear();
+  const Move&     operator[](size_t i) const;
 
 private:
   static constexpr size_t MaxMoves = 256;
@@ -558,10 +559,10 @@ void generateMoves(const Position& p, MoveList& moves)
     generatePawnPushMoves<Player, 1>(p, moves, pinned, empty, line, kingPos);  // single
     generatePawnPushMoves<Player, 2>(p, moves, pinned, empty, line, kingPos);  // double
     // Knight captures and blocks.
-    auto attackers = getBoard<Player, HRS>(p);
+    auto attackers = getBoard<Player, HRS>(p) & ~pinned;
     while (attackers) {
       int  hpos   = pop(attackers);
-      auto hmoves = KnightMoves[hpos] & (checkers | line);
+      auto hmoves = KnightMoves[hpos] & (checkers | line) & notself;
       while (hmoves) {
         moves += MvPiece {hpos, pop(hmoves)};
       }

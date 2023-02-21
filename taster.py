@@ -112,6 +112,6 @@ class PositionTree:
 
 if __name__ == "__main__":
     r = PositionTree(
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 8)
+        "r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6", 6)
     if r.compare():
         print("All checks passed!")

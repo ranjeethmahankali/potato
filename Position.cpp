@@ -175,6 +175,11 @@ void Position::setCastlingRights(Castle c)
   mCastlingRights = c;
 }
 
+void Position::revokeCastlingRights(Castle c)
+{
+  mCastlingRights = Castle(mCastlingRights & ~c);
+}
+
 Color Position::turn() const
 {
   return mTurn;
@@ -475,6 +480,9 @@ std::string Position::fen() const
       else {
         ++empty;
       }
+    }
+    if (empty) {
+      out += std::to_string(empty);
     }
   }
   {  // Active turn

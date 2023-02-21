@@ -11,10 +11,33 @@ const Move::VariantType& Move::value() const
 
 void MvPiece::commit(Position& p) const
 {
+  Piece pc  = p.piece(mFrom);
   Piece old = p.piece(mTo);
-  if (old != Piece::NONE || type(p.piece(mFrom)) == PWN) {
+  if (old != Piece::NONE || type(pc) == PWN) {
     // Captures and pawn pushes reset the halfmove counter.
     p.resetHalfMoveCount();
+  }
+  if (pc == W_ROK) {
+    if (mFrom == 56) {
+      p.revokeCastlingRights(W_LONG);
+    }
+    else if (mFrom == 63) {
+      p.revokeCastlingRights(W_SHORT);
+    }
+  }
+  else if (pc == B_ROK) {
+    if (mFrom == 0) {
+      p.revokeCastlingRights(B_LONG);
+    }
+    else if (mFrom == 7) {
+      p.revokeCastlingRights(B_SHORT);
+    }
+  }
+  else if (pc == W_KNG) {
+    p.revokeCastlingRights(Castle(W_LONG | W_SHORT));
+  }
+  else if (pc == B_KNG) {
+    p.revokeCastlingRights(Castle(B_LONG | B_SHORT));
   }
   p.history().push({.mPiece = old});
   p.move(mFrom, mTo);
@@ -99,6 +122,11 @@ size_t MoveList::size() const
 void MoveList::clear()
 {
   mEnd = mBuf.data();
+}
+
+const Move& MoveList::operator[](size_t i) const
+{
+  return mBuf[i];
 }
 
 int pop(BitBoard& b)
@@ -233,14 +261,30 @@ std::ostream& operator<<(std::ostream& os, const MvCapturePromote<Player>& m)
 template<Color Player>
 std::ostream& operator<<(std::ostream& os, const MvCastleShort<Player>& m)
 {
-  os << "O-O";
+  if constexpr (Player == WHT) {
+    os << "e1g1";
+  }
+  else if constexpr (Player == BLK) {
+    os << "e8g8";
+  }
+  else {
+    os << "O-O";
+  }
   return os;
 };
 
 template<Color Player>
 std::ostream& operator<<(std::ostream& os, const MvCastleLong<Player>& m)
 {
-  os << "O-O-O";
+  if constexpr (Player == WHT) {
+    os << "e1c1";
+  }
+  else if constexpr (Player == BLK) {
+    os << "e8c8";
+  }
+  else {
+    os << "O-O";
+  }
   return os;
 };
 

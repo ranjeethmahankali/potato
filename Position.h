@@ -121,6 +121,7 @@ public:
   void            setEnpassantSq(int enp);
   Castle          castlingRights() const;
   void            setCastlingRights(Castle c);
+  void            revokeCastlingRights(Castle c);
   Color           turn() const;
   void            setTurn(Color turn);
   void            switchTurn();

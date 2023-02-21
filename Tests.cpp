@@ -1,4 +1,3 @@
-#include "Position.h"
 #define CATCH_CONFIG_MAIN
 #include <Move.h>
 #include <algorithm>
@@ -45,7 +44,7 @@ static void doPerftTest(const std::string&      fenstr,
       current.push(mvd.first);
     }
     if (current.size() < depth) {
-      if (current.size() % 2 == 0) {
+      if (p.turn() == WHT) {
         generateMoves<WHT>(p, mlist);
       }
       else {
@@ -57,14 +56,26 @@ static void doPerftTest(const std::string&      fenstr,
     }
   } while (!moves.empty());
   REQUIRE(actual.size() == expected.size());
-  REQUIRE(std::equal(actual.begin(), actual.end(), expected.begin()));
+  for (size_t i = 0; i < actual.size(); ++i) {
+    REQUIRE(actual[i] == expected[i]);
+  }
 }
 
-TEST_CASE("Perft Results", "[perft][starting]")
+TEST_CASE("Perft Results 1", "[perft][starting][case-1]")
 {
   doPerftTest("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
               6,
               {{20, 400, 8902, 197281, 4865609, 119060324}});
+}
+
+TEST_CASE("Perft Results 2", "[perft][starting][case-2]")
+{
+  // doPerftTest("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6",
+  //             6,
+  //             {{38, 1357, 51428, 1842992, 71427276, 2584961600}});
+  doPerftTest("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6",
+              5,
+              {{38, 1357, 51428, 1842992, 71427276}});
 }
 
 TEST_CASE("Fen Consistency", "[fen][consistency]")
@@ -83,15 +94,22 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
     Move(MvPiece {D8, H4}).commit(p);
     REQUIRE(p.fen() == "rnb1kbnr/pppp1ppp/4p3/8/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
   }
+  SECTION("Case 3")
+  {
+    Position p = Position::fromFen(
+      "r1bqk2r/ppp2ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 b kq - 3 7");
+    Move(MvPiece {E8, D7}).commit(p);
+    REQUIRE(p.fen() ==
+            "r1bq3r/pppk1ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 w - - 4 8");
+  }
 }
 
-// TEST_CASE("Perft From Starting Position", "[perft]")
-// {
-//   Position p =
-//     Position::fromFen("rnb1kbnr/pppp1ppp/8/4p3/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2
-//     3");
-//   perft(p, 1);
-// }
+TEST_CASE("Perft From Starting Position", "[perft][debug]")
+{
+  Position p =
+    Position::fromFen("r1bq1b1r/pppk1ppp/2n5/1B1pN3/3Pn3/8/PPP2PPP/RNBQ1RK1 b - - 0 7");
+  perft(p, 1);
+}
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {
