@@ -145,6 +145,4 @@ def generateUnitTests(fenstrs, depth, counterOffset=1):
 
 
 if __name__ == "__main__":
-    comparefen(
-        "R1Nn4/1R1QPp2/3P1P1p/pr3Npr/p2n1Ppq/2Pk1Bp1/1P1b1p1B/1b1K4 w - - 0 1",
-        6)
+    comparefen("3Q4/8/7p/n5N1/P1b1K3/q5p1/1P2k3/B7 w - - 0 1", 6)

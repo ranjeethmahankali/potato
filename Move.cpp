@@ -346,6 +346,30 @@ void generatePawnPushMoves(const Position& p,
 }
 
 template<Color Player>
+void generatePawnPromotionMoves(const Position& p,
+                                MoveList&       moves,
+                                BitBoard        pinned,
+                                BitBoard        empty,
+                                BitBoard        mask)
+{
+  static constexpr Direction Up            = RelativeDir<N, Player>;
+  static constexpr BitBoard  PromotionRank = Rank[RelativeRank<Player, 6> * 8];
+  // Pinned pawns cannot promote.
+  auto pcs    = getBoard<Player, PWN>(p) & PromotionRank & ~pinned;
+  auto pmoves = shift<Up>(pcs) & empty;
+  if (mask) {
+    pmoves &= mask;
+  }
+  while (pmoves) {
+    uint8_t file = uint8_t(pop(pmoves) % 8);
+    moves += MvPromote<Player> {file, makePiece<Player>(QEN)};
+    moves += MvPromote<Player> {file, makePiece<Player>(ROK)};
+    moves += MvPromote<Player> {file, makePiece<Player>(BSH)};
+    moves += MvPromote<Player> {file, makePiece<Player>(HRS)};
+  }
+}
+
+template<Color Player>
 void generateDiagSlides(const Position& p,
                         MoveList&       moves,
                         BitBoard        pinned,
@@ -398,21 +422,20 @@ void generateOrthoSlides(const Position& p,
 template<Color Player>
 void generateMoves(const Position& p, MoveList& moves)
 {
-  static constexpr Direction Up            = RelativeDir<N, Player>;
-  static constexpr BitBoard  HomePawnRank  = Rank[RelativeRank<Player, 1> * 8];
-  static constexpr BitBoard  PromotionRank = Rank[RelativeRank<Player, 6> * 8];
-  static constexpr Color     Enemy         = Player == BLK ? WHT : BLK;
-  BitBoard                   self          = getAllBoards<Player>(p);
-  BitBoard                   notself       = ~self;
-  BitBoard                   enemy         = getAllBoards<Enemy>(p);
-  BitBoard                   notenemy      = ~enemy;
-  BitBoard                   all           = self | enemy;
-  BitBoard                   empty         = ~all;
-  BitBoard                   ourKing       = getBoard<Player, KNG>(p);
-  BitBoard                   otherKing     = getBoard<Enemy, KNG>(p);
-  int                        kingPos       = lsb(ourKing);
-  int                        otherKingPos  = lsb(otherKing);
-  BitBoard                   unsafe        = 0;
+  static constexpr Direction Up           = RelativeDir<N, Player>;
+  static constexpr BitBoard  HomePawnRank = Rank[RelativeRank<Player, 1> * 8];
+  static constexpr Color     Enemy        = Player == BLK ? WHT : BLK;
+  BitBoard                   self         = getAllBoards<Player>(p);
+  BitBoard                   notself      = ~self;
+  BitBoard                   enemy        = getAllBoards<Enemy>(p);
+  BitBoard                   notenemy     = ~enemy;
+  BitBoard                   all          = self | enemy;
+  BitBoard                   empty        = ~all;
+  BitBoard                   ourKing      = getBoard<Player, KNG>(p);
+  BitBoard                   otherKing    = getBoard<Enemy, KNG>(p);
+  int                        kingPos      = lsb(ourKing);
+  int                        otherKingPos = lsb(otherKing);
+  BitBoard                   unsafe       = 0;
   {  // Find all unsafe squares.
     BitBoard pcs = getBoard<Enemy, PWN>(p);
     unsafe = shift<RelativeDir<NE, Enemy>>(pcs) | shift<RelativeDir<NW, Enemy>>(pcs) |
@@ -502,6 +525,8 @@ void generateMoves(const Position& p, MoveList& moves)
     // Block with a pawn push
     generatePawnPushMoves<Player, 1>(p, moves, pinned, empty, line, kingPos);  // single
     generatePawnPushMoves<Player, 2>(p, moves, pinned, empty, line, kingPos);  // double
+    // Block with a promotion
+    generatePawnPromotionMoves<Player>(p, moves, pinned, empty, line);
     // Knight captures and blocks.
     auto attackers = getBoard<Player, HRS>(p) & ~pinned;
     while (attackers) {
@@ -529,15 +554,7 @@ void generateMoves(const Position& p, MoveList& moves)
     generatePawnCaptures<Player, NE>(p, moves, pinned, enemy, 0, kingPos);
     generatePawnCaptures<Player, NW>(p, moves, pinned, enemy, 0, kingPos);
     // Pawn promotions.
-    auto pcs    = getBoard<Player, PWN>(p) & PromotionRank & ~pinned;
-    auto pmoves = shift<Up>(pcs) & empty;
-    while (pmoves) {
-      uint8_t file = uint8_t(pop(pmoves) % 8);
-      moves += MvPromote<Player> {file, makePiece<Player>(QEN)};
-      moves += MvPromote<Player> {file, makePiece<Player>(ROK)};
-      moves += MvPromote<Player> {file, makePiece<Player>(BSH)};
-      moves += MvPromote<Player> {file, makePiece<Player>(HRS)};
-    }
+    generatePawnPromotionMoves<Player>(p, moves, pinned, empty, 0);
     // Pawn capture promotions.
     generatePawnCapturePromotions<Player, NE>(p, moves, pinned, enemy, 0, kingPos);
     generatePawnCapturePromotions<Player, NW>(p, moves, pinned, enemy, 0, kingPos);
@@ -545,10 +562,10 @@ void generateMoves(const Position& p, MoveList& moves)
     generateEnpassant<Player, E>(p, moves, pinned, kingPos);
     generateEnpassant<Player, W>(p, moves, pinned, kingPos);
     // Pinned knights cannot be moved. Only try to move unpinned knights.
-    pcs = getBoard<Player, HRS>(p) & ~pinned;
+    auto pcs = getBoard<Player, HRS>(p) & ~pinned;
     while (pcs) {
-      int pos = pop(pcs);
-      pmoves  = KnightMoves[pos] & notself;
+      int  pos    = pop(pcs);
+      auto pmoves = KnightMoves[pos] & notself;
       while (pmoves) {
         moves += MvPiece {pos, pop(pmoves)};
       }
