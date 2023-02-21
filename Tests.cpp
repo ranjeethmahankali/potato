@@ -9,91 +9,6 @@
 
 using namespace potato;
 
-static void push(const MoveList&                      mlist,
-                 std::stack<std::pair<Move, size_t>>& moves,
-                 size_t                               depth)
-{
-  for (const Move& m : mlist) {
-    moves.emplace(m, depth);
-  }
-}
-
-static void doPerftTest(const std::string&      fenstr,
-                        size_t                  depth,
-                        std::span<const size_t> expected)
-{
-  REQUIRE(expected.size() == depth);
-  std::vector<size_t>                 actual(depth, 0);
-  Position                            p = Position::fromFen(fenstr);
-  MoveList                            mlist;
-  std::stack<std::pair<Move, size_t>> moves;
-  std::stack<Move>                    current;
-  std::stack<Position>                positions;
-  positions.push(p);
-  do {
-    if (!moves.empty()) {
-      auto mvd = moves.top();
-      moves.pop();
-      while (mvd.second <= current.size()) {
-        current.top().revert(p);
-        current.pop();
-        positions.pop();
-        REQUIRE(p == positions.top());
-      }
-      mvd.first.commit(p);
-      positions.push(p);
-      current.push(mvd.first);
-    }
-    if (current.size() < depth) {
-      generateMoves(p, mlist);
-      actual[current.size()] += mlist.size();
-      if (current.size() + 1 < depth) {
-        push(mlist, moves, current.size() + 1);
-      }
-      mlist.clear();
-    }
-  } while (!moves.empty());
-  REQUIRE(actual.size() == expected.size());
-  for (size_t i = 0; i < actual.size(); ++i) {
-    REQUIRE(actual[i] == expected[i]);
-  }
-}
-
-TEST_CASE("Perft Results 1", "[perft][starting][case-1]")
-{
-  doPerftTest("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-              6,
-              {{20, 400, 8902, 197281, 4865609, 119060324}});
-}
-
-TEST_CASE("Perft Results 2", "[perft][case-2]")
-{
-  doPerftTest("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6",
-              6,
-              {{38, 1357, 51428, 1842992, 71427276, 2584961600}});
-}
-
-TEST_CASE("Perft Results 3", "[perft][case-3]")
-{
-  doPerftTest("r1bqk2r/ppppbppp/5n2/4n3/2B1P3/3P4/PPP2PPP/RNB1K1NR w KQkq - 0 6",
-              6,
-              {{33, 1053, 32371, 1056722, 32819055, 1096036679}});
-}
-
-TEST_CASE("Perft Results 4", "[perft][case-4]")
-{
-  doPerftTest("5rk1/5ppp/p1pqpn2/1r1p4/3P1N2/1PP2Q2/P4PPP/R4RK1 w - - 1 18",
-              6,
-              {{34, 1212, 41471, 1467118, 50367135, 1776221475}});
-}
-
-TEST_CASE("Perft Results 5", "[perft][case-5]")
-{
-  doPerftTest("2r5/8/p6p/1p2R3/5k2/2P5/PP3P1P/4R1K1 b - - 0 30",
-              6,
-              {{17, 497, 7303, 212706, 3163842, 90738905}});
-}
-
 TEST_CASE("Fen Consistency", "[fen][consistency]")
 {
   SECTION("Case 1")
@@ -127,12 +42,12 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
   }
 }
 
-TEST_CASE("Perft From Starting Position", "[perft][debug]")
-{
-  Position p = Position::fromFen("2r5/8/p6p/1p2R3/8/2P2k2/PP3P1P/3R2K1 b - - 2 31");
-  std::cout << p << std::endl;
-  perft(p, 1);
-}
+// TEST_CASE("Perft From Starting Position", "[perft][debug]")
+// {
+//   Position p = Position::fromFen("2r5/8/p6p/1p2R3/8/2P2k2/PP3P1P/3R2K1 b - - 2 31");
+//   std::cout << p << std::endl;
+//   perft(p, 1);
+// }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {

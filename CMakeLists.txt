@@ -90,7 +90,7 @@ add_dependencies(potato copy_shaders)
 
 # Unit tests
 find_package(Catch2 CONFIG REQUIRED)
-add_executable(mash "Tests.cpp")
+add_executable(mash "Tests.cpp" "MoveTest.cpp")
 target_include_directories(mash PRIVATE "./")
 target_link_libraries(mash PRIVATE potatolib Catch2::Catch2 Catch2::Catch2WithMain)
 

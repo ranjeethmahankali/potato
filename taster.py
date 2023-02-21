@@ -22,7 +22,22 @@ def makeNewFen(oldfen: str, move: str):
     return fenline.removeprefix('Fen: ')
 
 
-class PositionTree:
+def fishMoveCount(fenstr: str, depth: int):
+    """Get the move count from the stockfish's perft."""
+    fish = subprocess.Popen('stockfish',
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    out, err = fish.communicate(input=bytes(
+        f"position fen \"{fenstr}\"\ngo perft {depth}\nquit\n", "ascii"))
+    fish.kill()
+    return int([
+        ln.lower() for ln in out.decode().splitlines()[1:]
+        if ln.lower().startswith("nodes searched: ")
+    ][0].removeprefix("nodes searched: "))
+
+
+class Comparator:
     """Useful for comparing move generation."""
 
     def __init__(self, fen=None, depth=4, ht=0):
@@ -99,7 +114,7 @@ class PositionTree:
             newfen = makeNewFen(self.fen, problem)
             if newfen == self.fen:
                 continue
-            r = PositionTree(newfen, self.depth - 1, self.ht + 1)
+            r = Comparator(newfen, self.depth - 1, self.ht + 1)
             childSuccess = r.compare()
             if childSuccess:
                 print(f"{self.indent()}Inconsistent position:")
@@ -110,7 +125,24 @@ class PositionTree:
         return success
 
 
-if __name__ == "__main__":
-    r = PositionTree("2r5/8/p6p/1p2R3/8/2P2k2/PP3P1P/3R2K1 b - - 2 31", 6)
+def comparefen(fenstr, depth):
+    """Compare the move generation from the given fen to the given depth."""
+    r = Comparator(fenstr, depth)
     if r.compare():
         print("All checks passed!")
+
+
+def generateUnitTests(fenstrs, depth, counterOffset=1):
+    """Generate C++ unit test for testing positions."""
+    for counter, fenstr in zip(
+            range(counterOffset,
+                  len(fenstrs) + counterOffset), fenstrs):
+        print(f"TEST_CASE(\"Move generation test {counter}\", "
+              f"\"[move-gen][case-{counter}]\"){{\n"
+              f"doPerftTest(\"{fenstr}\", {depth}, {{{{" + ", ".join(
+                  [str(fishMoveCount(fenstr, d))
+                   for d in range(1, depth + 1)]) + "}});\n}\n")
+
+
+if __name__ == "__main__":
+    comparefen("2r5/8/p6p/1p2R3/8/2P2k2/PP3P1P/3R2K1 b - - 2 31", 6)
