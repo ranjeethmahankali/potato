@@ -107,9 +107,11 @@ class PositionTree:
                 print(f"{self.indent()}After: {newfen}")
                 print(f"{self.indent()}Move: {problem}")
                 success = False
+        return success
 
 
-r = PositionTree("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7)
-# r = PositionTree("rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR b KQkq - 0 1",
-#                  5)
-r.compare()
+if __name__ == "__main__":
+    r = PositionTree(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 8)
+    if r.compare():
+        print("All checks passed!")

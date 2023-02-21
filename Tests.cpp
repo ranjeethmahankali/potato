@@ -19,14 +19,12 @@ static void push(const MoveList&                      mlist,
   }
 }
 
-TEST_CASE("Perft Results", "[moves][starting]")
+static void doPerftTest(const std::string&      fenstr,
+                        size_t                  depth,
+                        std::span<const size_t> expected)
 {
-  static constexpr size_t                    Depth     = 6;
-  static constexpr std::array<size_t, Depth> sExpected = {
-    {20, 400, 8902, 197281, 4865609, 119060324}};
-  std::array<size_t, Depth> actual;
-  std::fill(actual.begin(), actual.end(), 0);
-  Position                            p;
+  std::vector<size_t>                 actual(depth, 0);
+  Position                            p = Position::fromFen(fenstr);
   MoveList                            mlist;
   std::stack<std::pair<Move, size_t>> moves;
   std::stack<Move>                    current;
@@ -42,14 +40,11 @@ TEST_CASE("Perft Results", "[moves][starting]")
         positions.pop();
         REQUIRE(p == positions.top());
       }
-      // std::cout << "Commiting " << mvd.first << std::endl;
       mvd.first.commit(p);
-      // std::cout << p << std::endl;
       positions.push(p);
       current.push(mvd.first);
     }
-    if (current.size() < Depth) {
-      // std::cout << p.fen() << std::endl;
+    if (current.size() < depth) {
       if (current.size() % 2 == 0) {
         generateMoves<WHT>(p, mlist);
       }
@@ -61,7 +56,15 @@ TEST_CASE("Perft Results", "[moves][starting]")
       mlist.clear();
     }
   } while (!moves.empty());
-  REQUIRE(actual == sExpected);
+  REQUIRE(actual.size() == expected.size());
+  REQUIRE(std::equal(actual.begin(), actual.end(), expected.begin()));
+}
+
+TEST_CASE("Perft Results", "[perft][starting]")
+{
+  doPerftTest("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              6,
+              {{20, 400, 8902, 197281, 4865609, 119060324}});
 }
 
 TEST_CASE("Fen Consistency", "[fen][consistency]")
@@ -73,24 +76,22 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
     Move(MvDoublePush<BLK> {B7}).commit(p);
     REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
   }
-
   SECTION("Case 2")
   {
     Position p =
       Position::fromFen("rnbqkbnr/pppp1ppp/4p3/8/5P2/5N2/PPPPP1PP/RNBQKB1R b KQkq - 1 2");
-    std::cout << p << std::endl;
     Move(MvPiece {D8, H4}).commit(p);
-    std::cout << p << std::endl;
     REQUIRE(p.fen() == "rnb1kbnr/pppp1ppp/4p3/8/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
   }
 }
 
-TEST_CASE("Perft From Starting Position", "[perft]")
-{
-  Position p =
-    Position::fromFen("rnb1kbnr/pppp1ppp/8/4p3/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
-  perft(p, 1);
-}
+// TEST_CASE("Perft From Starting Position", "[perft]")
+// {
+//   Position p =
+//     Position::fromFen("rnb1kbnr/pppp1ppp/8/4p3/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2
+//     3");
+//   perft(p, 1);
+// }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {
