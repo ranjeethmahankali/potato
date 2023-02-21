@@ -22,6 +22,7 @@ static void doPerftTest(const std::string&      fenstr,
                         size_t                  depth,
                         std::span<const size_t> expected)
 {
+  REQUIRE(expected.size() == depth);
   std::vector<size_t>                 actual(depth, 0);
   Position                            p = Position::fromFen(fenstr);
   MoveList                            mlist;
@@ -70,11 +71,18 @@ TEST_CASE("Perft Results 1", "[perft][starting][case-1]")
               {{20, 400, 8902, 197281, 4865609, 119060324}});
 }
 
-TEST_CASE("Perft Results 2", "[perft][starting][case-2]")
+TEST_CASE("Perft Results 2", "[perft][case-2]")
 {
   doPerftTest("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6",
               6,
               {{38, 1357, 51428, 1842992, 71427276, 2584961600}});
+}
+
+TEST_CASE("Perft Results 3", "[perft][case-3]")
+{
+  doPerftTest("r1bqk2r/ppppbppp/5n2/4n3/2B1P3/3P4/PPP2PPP/RNB1K1NR w KQkq - 0 6",
+              6,
+              {{33, 1053, 32371, 1056722, 32819055, 1096036679}});
 }
 
 TEST_CASE("Fen Consistency", "[fen][consistency]")
@@ -100,6 +108,13 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
     Move(MvPiece {E8, D7}).commit(p);
     REQUIRE(p.fen() ==
             "r1bq3r/pppk1ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 w - - 4 8");
+  }
+  SECTION("Case 4")
+  {
+    Position p = Position::fromFen(
+      "r1bqk2r/ppppbp1p/8/3nB1p1/2B1P3/3P4/PPP2PPP/RN2K1NR w KQkq - 0 8");
+    Move(MvPiece {E5, H8}).commit(p);
+    REQUIRE(p.fen() == "r1bqk2B/ppppbp1p/8/3n2p1/2B1P3/3P4/PPP2PPP/RN2K1NR b KQq - 0 8");
   }
 }
 

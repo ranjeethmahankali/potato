@@ -111,31 +111,34 @@ struct MvPromote
 };
 
 template<Color Player>
-struct MvCapturePromote
+struct MvCapturePromote : MvPiece
 {
-  int   mFrom;
-  int   mTo;
   Piece mPromoted;
 
   void commit(Position& p) const
-
   {
     p.resetHalfMoveCount();
-    p.history().push({.mPiece = p.piece(mTo)});
-    p.remove(mFrom).put(mTo, mPromoted);
+    MvPiece::commit(p);
+    p.put(mTo, mPromoted);
   }
   void revert(Position& p) const
   {
-    p.put(mTo, p.history().pop().mPiece).put(mFrom, makePiece<Player>(PWN));
+    MvPiece::revert(p);
+    p.put(mFrom, makePiece<Player>(PWN));
   }
 };
 
 template<Color Player>
 struct MvCastleShort
 {
-  static constexpr int Rank = RelativeRank<Player, 0>;
-  void                 commit(Position& p) const
+  static constexpr int    Rank   = RelativeRank<Player, 0>;
+  static constexpr Castle Rights = Castle(Player == BLK   ? 0b11
+                                          : Player == WHT ? 0b1100
+                                                          : 0);
+
+  void commit(Position& p) const
   {
+    p.revokeCastlingRights(Rights);
     p.move({4, Rank}, {6, Rank}).move({7, Rank}, {5, Rank});
   }
   void revert(Position& p) const
@@ -147,9 +150,14 @@ struct MvCastleShort
 template<Color Player>
 struct MvCastleLong
 {
-  static constexpr int Rank = RelativeRank<Player, 0>;
-  void                 commit(Position& p) const
+  static constexpr int    Rank   = RelativeRank<Player, 0>;
+  static constexpr Castle Rights = Castle(Player == BLK   ? 0b11
+                                          : Player == WHT ? 0b1100
+                                                          : 0);
+
+  void commit(Position& p) const
   {
+    p.revokeCastlingRights(Rights);
     p.move({4, Rank}, {2, Rank}).move({0, Rank}, {3, Rank});
   }
   void revert(Position& p) const

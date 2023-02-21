@@ -17,21 +17,17 @@ void MvPiece::commit(Position& p) const
     // Captures and pawn pushes reset the halfmove counter.
     p.resetHalfMoveCount();
   }
-  if (pc == W_ROK) {
-    if (mFrom == 56) {
-      p.revokeCastlingRights(W_LONG);
-    }
-    else if (mFrom == 63) {
-      p.revokeCastlingRights(W_SHORT);
-    }
+  if ((pc == W_ROK && mFrom == 56) || (old == W_ROK && mTo == 56)) {
+    p.revokeCastlingRights(W_LONG);
   }
-  else if (pc == B_ROK) {
-    if (mFrom == 0) {
-      p.revokeCastlingRights(B_LONG);
-    }
-    else if (mFrom == 7) {
-      p.revokeCastlingRights(B_SHORT);
-    }
+  else if ((pc == W_ROK && mFrom == 63) || (old == W_ROK && mTo == 63)) {
+    p.revokeCastlingRights(W_SHORT);
+  }
+  else if ((pc == B_ROK && mFrom == 0) || (old == B_ROK && mTo == 0)) {
+    p.revokeCastlingRights(B_LONG);
+  }
+  else if ((pc == B_ROK && mFrom == 7) || (old == B_ROK && mTo == 7)) {
+    p.revokeCastlingRights(B_SHORT);
   }
   else if (pc == W_KNG) {
     p.revokeCastlingRights(Castle(W_LONG | W_SHORT));
