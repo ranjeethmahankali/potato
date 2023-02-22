@@ -3,6 +3,7 @@
 #include <Position.h>
 #include <Util.h>
 #include <View.h>
+#include <argparse/argparse.hpp>
 #include <iostream>
 
 using namespace potato;
@@ -16,7 +17,7 @@ static void gameLoop()
     std::getline(std::cin, input);
     if (input.empty())
       continue;
-    if (input == "exit") {
+    if (input == "exit" || input == "quit") {
       running = false;
       continue;
     }
@@ -33,11 +34,36 @@ static void play()
   view::join();
 }
 
+static void cli()
+{
+  command::init();
+  std::string input;
+  bool        running = true;
+  while (running) {
+    std::getline(std::cin, input);
+    if (input.empty())
+      continue;
+    if (input == "exit" || input == "quit") {
+      running = false;
+      continue;
+    }
+    command::run(input);
+  }
+}
+
 int main(int argc, char** argv)
 {
-  currentPosition() =
-    Position::fromFen("r1bqk2r/ppp2ppp/2n2n2/4p3/4p3/2P2NP1/PPP2PBP/R1BQ1RK1 w kq - 0 8");
-  // std::cout << currentPosition() << std::endl;
-  play();
+  argparse::ArgumentParser parser("potato");
+  parser.add_argument("--cli")
+    .help("Start in pure CLI mode instead of entering the game loop.")
+    .implicit_value(true)
+    .default_value(false);
+  parser.parse_args(argc, argv);
+  if (parser["--cli"] == true) {
+    cli();
+  }
+  else {
+    play();
+  }
   return 0;
 }

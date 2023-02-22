@@ -175,6 +175,11 @@ void Position::setCastlingRights(Castle c)
   mCastlingRights = c;
 }
 
+void Position::revokeCastlingRights(Castle c)
+{
+  mCastlingRights = Castle(mCastlingRights & ~c);
+}
+
 Color Position::turn() const
 {
   return mTurn;
@@ -195,8 +200,8 @@ void Position::clear()
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
   std::fill(mBitBoards.begin(), mBitBoards.end(), 0);
   mBitBoards[Piece::NONE] = 0xffffffffffffffff;  // All squares contain the NONE piece.
-  mHalfMoves              = 0;
-  mMoveCounter            = 1;
+  mHalfMoveCount          = 0;
+  mMoveCount              = 1;
   mEnPassantSquare        = -1;
   mTurn                   = Color::WHT;
   calcHash();
@@ -211,7 +216,7 @@ bool Position::operator==(const Position& other) const
 {
   return mPieces == other.mPieces && mBitBoards == other.mBitBoards &&
          mHistory == other.mHistory && mHash == other.mHash &&
-         mHalfMoves == other.mHalfMoves && mMoveCounter == other.mMoveCounter &&
+         mHalfMoveCount == other.mHalfMoveCount && mMoveCount == other.mMoveCount &&
          mEnPassantSquare == other.mEnPassantSquare &&
          mCastlingRights == other.mCastlingRights && mTurn == other.mTurn;
 }
@@ -444,8 +449,8 @@ Position Position::fromFen(const std::string& fen)
   board.mTurn = parseActiveColor(results[2]);
   parseCastlingRights(results[3], board.mCastlingRights);
   parseEnpassant(results[4], board.mEnPassantSquare);
-  board.mHalfMoves   = std::stoi(results[5]);
-  board.mMoveCounter = std::stoi(results[6]);
+  board.mHalfMoveCount = std::stoi(results[5]);
+  board.mMoveCount     = std::stoi(results[6]);
   return board;
 }
 
@@ -476,6 +481,9 @@ std::string Position::fen() const
         ++empty;
       }
     }
+    if (empty) {
+      out += std::to_string(empty);
+    }
   }
   {  // Active turn
     out += mTurn == BLK ? " b" : " w";
@@ -498,14 +506,48 @@ std::string Position::fen() const
     out.push_back(' ');
     out += mEnPassantSquare == -1 ? "-" : SquareCoord[mEnPassantSquare];
   }
-  out += " " + std::to_string(mHalfMoves);
-  out += " " + std::to_string(mMoveCounter);
+  out += " " + std::to_string(mHalfMoveCount);
+  out += " " + std::to_string(mMoveCount);
   return out;
 }
 
 History& Position::history()
 {
   return mHistory;
+}
+
+void Position::incrementMoveCounter()
+{
+  ++mMoveCount;
+}
+
+void Position::incrementHalfMoveCount()
+{
+  ++mHalfMoveCount;
+}
+
+void Position::resetHalfMoveCount()
+{
+  mHalfMoveCount = 0;
+}
+
+void Position::setMoveCount(int c)
+{
+  mMoveCount = c;
+}
+
+void Position::setHalfMoveCount(int c)
+{
+  mHalfMoveCount = c;
+}
+
+int Position::moveCount() const
+{
+  return mMoveCount;
+}
+int Position::halfMoveCount() const
+{
+  return mHalfMoveCount;
 }
 
 bool Position::valid() const

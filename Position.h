@@ -84,6 +84,7 @@ union HistoryData
 {
   Piece  mPiece;
   int    mEnpassantSquare;
+  int    mCounter = 0;
   Castle mCastlingRights;
 
   bool operator==(const HistoryData& other) const;
@@ -120,6 +121,7 @@ public:
   void            setEnpassantSq(int enp);
   Castle          castlingRights() const;
   void            setCastlingRights(Castle c);
+  void            revokeCastlingRights(Castle c);
   Color           turn() const;
   void            setTurn(Color turn);
   void            switchTurn();
@@ -128,6 +130,13 @@ public:
   bool            valid() const;
   std::string     fen() const;
   History&        history();
+  void            incrementMoveCounter();
+  void            incrementHalfMoveCount();
+  void            resetHalfMoveCount();
+  void            setMoveCount(int c);
+  void            setHalfMoveCount(int c);
+  int             moveCount() const;
+  int             halfMoveCount() const;
   static Position empty();
   static Position fromFen(const std::string& fen);
 
@@ -141,8 +150,8 @@ private:
   std::array<BitBoard, NUniquePieces> mBitBoards;
   History                             mHistory;
   size_t                              mHash            = 0;
-  int                                 mHalfMoves       = 0;
-  int                                 mMoveCounter     = 1;
+  int                                 mHalfMoveCount   = 0;
+  int                                 mMoveCount       = 1;
   int                                 mEnPassantSquare = -1;
   Castle                              mCastlingRights  = Castle(0b1111);
   Color                               mTurn            = Color::WHT;

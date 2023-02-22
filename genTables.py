@@ -188,7 +188,7 @@ def pawnCapturesMask(x, y, isWhite=False):
     """Get a mask for pawn captures from a square."""
     forward = -1 if isWhite else 1
     b = Board()
-    if y == 7:
+    if y == (0 if isWhite else 7):
         return b
     if x > 0:
         b.set(x - 1, y + forward)
@@ -244,6 +244,22 @@ def between(x1, y1, x2, y2):
         return b
 
 
+def line(x1, y1, x2, y2):
+    """Get a board with an unbounded line between two squares."""
+    if x1 == x2 and y1 == y2:
+        return Board()
+    elif x1 == x2:
+        return fileMask(x1, y1)
+    elif y1 == y2:
+        return rankMask(x1, y1)
+    elif y1 - x1 == y2 - x2:
+        return diagonalMask(x1, y1)
+    elif x1 + y1 == x2 + y2:
+        return antiDiagonalMask(x1, y1)
+    else:
+        return Board()
+
+
 def castleEmptyMasks():
     """Generate mask for squares that need to be empty for castling."""
     b = [Board() for _ in range(4)]
@@ -294,7 +310,8 @@ def table2d(mapfn):
     return tbl
 
 
-if __name__ == "__main__":
+def printAllTables():
+    """Print all the lookup tables."""
     print("/*\nThis file is auto generated.\n"
           "DO NOT EDIT or track this file with git.\nGenerated at: "
           f"{datetime.now()}.\n*/\n")
@@ -315,6 +332,8 @@ if __name__ == "__main__":
     print("")
     print2dBoardArray(table2d(between), "Between")
     print("")
+    print2dBoardArray(table2d(line), "LineMask")
+    print("")
     printBoardArray(table(knightMovesMask), "KnightMoves")
     print("")
     printBoardArray(table(kingMovesMask), "KingMoves")
@@ -329,3 +348,7 @@ if __name__ == "__main__":
     print("")
     printBoardArray(castleSafeMask(), "CastleSafeMask")
     print('\n} // namespace potato')
+
+
+if __name__ == "__main__":
+    printAllTables()

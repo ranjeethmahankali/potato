@@ -367,7 +367,7 @@ static std::mutex                 sMutex = std::mutex();
 static std::condition_variable    sCV    = std::condition_variable();
 static std::thread                sThread;
 static Shader                     sShader = Shader();
-static bool                       sClosed = false;
+static bool                       sClosed = true;
 
 static void glfw_error_cb(int error, const char* desc)
 {
@@ -470,6 +470,7 @@ void start()
     return;
   }
   sThread = std::thread(loop);
+  sClosed = false;
 }
 
 void resume()
@@ -481,9 +482,11 @@ void resume()
 
 void update()
 {
-  pause();
-  sView->update(currentPosition());
-  resume();
+  if (!sClosed) {
+    pause();
+    sView->update(currentPosition());
+    resume();
+  }
 }
 
 void join()

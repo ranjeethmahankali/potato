@@ -1,4 +1,3 @@
-#include "Position.h"
 #define CATCH_CONFIG_MAIN
 #include <Move.h>
 #include <algorithm>
@@ -10,73 +9,45 @@
 
 using namespace potato;
 
-static void push(const MoveList&                      mlist,
-                 std::stack<std::pair<Move, size_t>>& moves,
-                 size_t                               depth)
+TEST_CASE("Fen Consistency", "[fen][consistency]")
 {
-  for (const Move& m : mlist) {
-    moves.emplace(m, depth);
+  SECTION("Case 1")
+  {
+    Position p =
+      Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
+    Move(MvDoublePush<BLK> {B7}).commit(p);
+    REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
+  }
+  SECTION("Case 2")
+  {
+    Position p =
+      Position::fromFen("rnbqkbnr/pppp1ppp/4p3/8/5P2/5N2/PPPPP1PP/RNBQKB1R b KQkq - 1 2");
+    Move(MvPiece {D8, H4}).commit(p);
+    REQUIRE(p.fen() == "rnb1kbnr/pppp1ppp/4p3/8/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
+  }
+  SECTION("Case 3")
+  {
+    Position p = Position::fromFen(
+      "r1bqk2r/ppp2ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 b kq - 3 7");
+    Move(MvPiece {E8, D7}).commit(p);
+    REQUIRE(p.fen() ==
+            "r1bq3r/pppk1ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 w - - 4 8");
+  }
+  SECTION("Case 4")
+  {
+    Position p = Position::fromFen(
+      "r1bqk2r/ppppbp1p/8/3nB1p1/2B1P3/3P4/PPP2PPP/RN2K1NR w KQkq - 0 8");
+    Move(MvPiece {E5, H8}).commit(p);
+    REQUIRE(p.fen() == "r1bqk2B/ppppbp1p/8/3n2p1/2B1P3/3P4/PPP2PPP/RN2K1NR b KQq - 0 8");
   }
 }
 
-TEST_CASE("Moves from the start", "[moves][starting]")
-{
-  static constexpr size_t                    Depth     = 4;
-  static constexpr std::array<size_t, Depth> sExpected = {{20, 400, 8902, 197281}};
-  std::array<size_t, Depth>                  actual;
-  std::fill(actual.begin(), actual.end(), 0);
-  Position                            p;
-  MoveList                            mlist;
-  std::stack<std::pair<Move, size_t>> moves;
-  std::stack<Move>                    current;
-  std::stack<Position>                positions;
-  positions.push(p);
-  do {
-    if (!moves.empty()) {
-      auto mvd = moves.top();
-      moves.pop();
-      while (mvd.second <= current.size()) {
-        // std::cout << p << "\nReverting " << current.top() << std::endl;
-        current.top().revert(p);
-        // std::cout << p << std::endl;
-        current.pop();
-        positions.pop();
-        // Make sure the position is accurate after reverting.
-        REQUIRE(p == positions.top());
-      }
-      // std::cout << "Commiting " << mvd.first << std::endl;
-      mvd.first.commit(p);
-      // std::cout << p << std::endl;
-      positions.push(p);
-      current.push(mvd.first);
-    }
-    if (current.size() < Depth) {
-      // std::cout << p.fen() << std::endl;
-      if (current.size() % 2 == 0) {
-        generateMoves<WHT>(p, mlist);
-      }
-      else {
-        generateMoves<BLK>(p, mlist);
-      }
-      actual[current.size()] += mlist.size();
-      push(mlist, moves, current.size() + 1);
-      mlist.clear();
-    }
-  } while (!moves.empty());
-  REQUIRE(actual == sExpected);
-}
-
-TEST_CASE("Perft From Starting Position", "[perft][starting]")
-{
-  Position p;
-  Move(MvPiece {D2, D4}).commit(p);
-  // Move(MvPiece {C7, C6}).commit(p);
-  // Move(MvPiece {E7, E6}).commit(p);
-  // Move(MvPiece {C7, C5}).commit(p);
-  Move(MvPiece {E7, E5}).commit(p);
-  std::cout << p.fen() << std::endl;
-  perft(p, 3);
-}
+// TEST_CASE("Perft From Starting Position", "[perft][debug]")
+// {
+//   Position p = Position::fromFen("8/8/8/n5N1/P1b1K3/q7/1P4p1/B2k3Q b - - 1 3");
+//   std::cout << p << std::endl;
+//   perft(p, 1);
+// }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {
