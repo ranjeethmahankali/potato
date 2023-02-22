@@ -42,12 +42,24 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
   }
 }
 
-// TEST_CASE("Perft From Starting Position", "[perft][debug]")
-// {
-//   Position p = Position::fromFen("8/8/8/n5N1/P1b1K3/q7/1P4p1/B2k3Q b - - 1 3");
-//   std::cout << p << std::endl;
-//   perft(p, 1);
-// }
+TEST_CASE("Perft From Starting Position", "[perft][debug]")
+{
+  /*
+    case-182
+    case-199
+    case-245
+    case-258
+    case-291
+    case-308
+    case-311
+    case-362
+    case-376
+    case-385
+   */
+  Position p = Position::fromFen("8/8/8/n5N1/P1b1K3/q7/1P4p1/B2k3Q b - - 1 3");
+  std::cout << p << std::endl;
+  perft(p, 1);
+}
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {
