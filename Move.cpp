@@ -281,9 +281,14 @@ void generatePawnCapturePromotions(const Position& p,
 }
 
 template<Color Player, Direction Dir>
-void generateEnpassant(const Position& p, MoveList& moves, BitBoard pinned, int kingPos)
+void generateEnpassant(const Position& p,
+                       MoveList&       moves,
+                       BitBoard        pinned,
+                       int             kingPos,
+                       BitBoard        all)
 {
-  static constexpr Color Enemy = Player == BLK ? WHT : BLK;
+  static constexpr Color    Enemy         = Player == BLK ? WHT : BLK;
+  static constexpr BitBoard EnpassantRank = Rank[RelativeRank<Player, 4> * 8];
   if (p.enpassantSq() == -1 ||
       p.piece(p.enpassantSq() + RelativeDir<S, Player>) != makePiece<Enemy>(PWN)) {
     return;
@@ -295,7 +300,19 @@ void generateEnpassant(const Position& p, MoveList& moves, BitBoard pinned, int 
     pmoves &= LineMask[p.enpassantSq()][kingPos];
   }
   if (pmoves) {
-    moves += MvEnpassant<Player> {lsb(pmoves), Dir};
+    auto mv      = MvEnpassant<Player> {lsb(pmoves), Dir};
+    auto sliders = getBoard<Enemy, ROK, QEN>(p) & EnpassantRank;
+    auto mask    = all & ~(OneHot[mv.mFrom] | OneHot[mv.target()]);
+    bool safe    = true;
+    while (sliders) {
+      if (OneHot[kingPos] & rookMoves(pop(sliders), mask)) {
+        safe = false;
+        break;
+      }
+    }
+    if (safe) {
+      moves += mv;
+    }
   }
 }
 
@@ -559,8 +576,8 @@ void generateMoves(const Position& p, MoveList& moves)
     generatePawnCapturePromotions<Player, NE>(p, moves, pinned, enemy, 0, kingPos);
     generatePawnCapturePromotions<Player, NW>(p, moves, pinned, enemy, 0, kingPos);
     // Enpassant
-    generateEnpassant<Player, E>(p, moves, pinned, kingPos);
-    generateEnpassant<Player, W>(p, moves, pinned, kingPos);
+    generateEnpassant<Player, E>(p, moves, pinned, kingPos, all);
+    generateEnpassant<Player, W>(p, moves, pinned, kingPos, all);
     // Pinned knights cannot be moved. Only try to move unpinned knights.
     auto pcs = getBoard<Player, HRS>(p) & ~pinned;
     while (pcs) {
