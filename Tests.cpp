@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include <Move.h>
+#include <Util.h>
 #include <algorithm>
 #include <bit>
 #include <catch.hpp>
@@ -45,8 +46,11 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
 // TEST_CASE("Perft From Starting Position", "[perft][debug]")
 // {
 //   Position p = Position::fromFen("8/8/8/n5N1/P1b1K3/q7/1P4p1/B2k3Q b - - 1 3");
-//   std::cout << p << std::endl;
-//   perft(p, 1);
+//   // std::cout << p << std::endl;
+//   {
+//     Timer timer("Perft");
+//     perft(p, 6);
+//   }
 // }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
