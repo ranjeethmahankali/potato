@@ -35,6 +35,7 @@ int Move::to() const
 template<Color Player>
 void commitMv(Position& p, MoveType mtype, int from, int to)
 {
+  static constexpr Color     Enemy          = Player == WHT ? BLK : WHT;
   static constexpr int       KngSideRookPos = Player == WHT ? 63 : Player == BLK ? 7 : -1;
   static constexpr int       QenSideRookPos = Player == WHT ? 56 : Player == BLK ? 0 : -1;
   static constexpr Castle    CastleShort    = Player == WHT   ? W_SHORT
@@ -43,8 +44,15 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
   static constexpr Castle    CastleLong     = Player == WHT   ? W_LONG
                                               : Player == BLK ? B_LONG
                                                               : Castle(0);
-  static constexpr Direction Up             = RelativeDir<N, Player>;
-  static constexpr int       HomeRank       = RelativeRank<Player, 0>;
+  static constexpr Castle    EnemyCastleShort = Player == WHT   ? B_SHORT
+                                                : Player == BLK ? W_SHORT
+                                                                : Castle(0);
+  static constexpr Castle    EnemyCastleLong  = Player == WHT   ? B_LONG
+                                                : Player == BLK ? W_LONG
+                                                                : Castle(0);
+  static constexpr Direction Up               = RelativeDir<N, Player>;
+  static constexpr int       HomeRank         = RelativeRank<Player, 0>;
+  static constexpr int       EnemyHomeRank    = RelativeRank<Player, 7>;
   switch (mtype) {
   case SILENT:
     p.incrementHalfMoveCount();
@@ -52,6 +60,14 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
     break;
   case CAPTURE:
     p.resetHalfMoveCount();
+    if (p.piece(to) == (Enemy | ROK)) {
+      if (to == EnemyHomeRank * 8) {
+        p.revokeCastlingRights(EnemyCastleLong);
+      }
+      else if (to == EnemyHomeRank * 8 + 7) {
+        p.revokeCastlingRights(EnemyCastleShort);
+      }
+    }
     p.history().push({.mPiece = p.piece(to)});
     p.move(from, to);
     break;
@@ -193,6 +209,7 @@ void Move::commit(Position& p) const
   }
   else if (p.turn() == BLK) {
     commitMv<BLK>(p, mType, from(), to());
+    p.incrementMoveCounter();
   }
   p.switchTurn();
 }

@@ -10,13 +10,15 @@
 
 using namespace potato;
 
-TEST_CASE("Fen Consistency", "[fen][consistency]")
+TEST_CASE("Fen Consistency", "[fen][consistency][debug]")
 {
   SECTION("Case 1")
   {
     Position p =
       Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
-    Move(DBL_PUSH, B5, B7).commit(p);
+    std::cout << p << std::endl;
+    Move(DBL_PUSH, B7, B5).commit(p);
+    std::cout << p << std::endl;
     REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
   }
   SECTION("Case 2")
@@ -30,7 +32,7 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
   {
     Position p = Position::fromFen(
       "r1bqk2r/ppp2ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 b kq - 3 7");
-    Move(SILENT, E8, D7).commit(p);
+    Move(MV_KNG, E8, D7).commit(p);
     REQUIRE(p.fen() ==
             "r1bq3r/pppk1ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 w - - 4 8");
   }
