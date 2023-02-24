@@ -70,6 +70,16 @@ enum Piece : uint8_t
   NONE = 0,
 };
 
+constexpr inline Piece operator|(Color c, PieceType type)
+{
+  return Piece(uint8_t(c) | type);
+}
+
+constexpr inline Piece operator|(PieceType type, Color c)
+{
+  return Piece(uint8_t(c) | type);
+}
+
 static constexpr size_t NUniquePieces = 15;
 
 enum Castle : uint8_t
@@ -80,10 +90,20 @@ enum Castle : uint8_t
   W_SHORT = 8,
 };
 
+constexpr inline Castle operator|(Castle a, Castle b)
+{
+  return Castle(uint8_t(a) | b);
+}
+
+constexpr inline Castle operator&(Castle a, Castle b)
+{
+  return Castle(uint8_t(a) & b);
+}
+
 union HistoryData
 {
   Piece  mPiece;
-  int    mEnpassantSquare;
+  int    mEnpassantSq;
   int    mCounter = 0;
   Castle mCastlingRights;
 
@@ -119,6 +139,7 @@ public:
   BitBoard        board(Piece p) const;
   int             enpassantSq() const;
   void            setEnpassantSq(int enp);
+  void            unsetEnpassantSq();
   Castle          castlingRights() const;
   void            setCastlingRights(Castle c);
   void            revokeCastlingRights(Castle c);

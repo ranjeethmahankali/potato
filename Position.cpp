@@ -170,6 +170,12 @@ void Position::setEnpassantSq(int enp)
 {
   mEnPassantSquare = enp;
 }
+
+void Position::unsetEnpassantSq()
+{
+  mEnPassantSquare = -1;
+}
+
 void Position::setCastlingRights(Castle c)
 {
   mCastlingRights = c;

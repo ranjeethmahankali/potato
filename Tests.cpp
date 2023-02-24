@@ -16,21 +16,21 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
   {
     Position p =
       Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
-    Move(MvDoublePush<BLK> {B7}).commit(p);
+    Move(DBL_PUSH, B5, B7).commit(p);
     REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
   }
   SECTION("Case 2")
   {
     Position p =
       Position::fromFen("rnbqkbnr/pppp1ppp/4p3/8/5P2/5N2/PPPPP1PP/RNBQKB1R b KQkq - 1 2");
-    Move(MvPiece {D8, H4}).commit(p);
+    Move(SILENT, D8, H4).commit(p);
     REQUIRE(p.fen() == "rnb1kbnr/pppp1ppp/4p3/8/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
   }
   SECTION("Case 3")
   {
     Position p = Position::fromFen(
       "r1bqk2r/ppp2ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 b kq - 3 7");
-    Move(MvPiece {E8, D7}).commit(p);
+    Move(SILENT, E8, D7).commit(p);
     REQUIRE(p.fen() ==
             "r1bq3r/pppk1ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 w - - 4 8");
   }
@@ -38,7 +38,7 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
   {
     Position p = Position::fromFen(
       "r1bqk2r/ppppbp1p/8/3nB1p1/2B1P3/3P4/PPP2PPP/RN2K1NR w KQkq - 0 8");
-    Move(MvPiece {E5, H8}).commit(p);
+    Move(CAPTURE, E5, H8).commit(p);
     REQUIRE(p.fen() == "r1bqk2B/ppppbp1p/8/3n2p1/2B1P3/3P4/PPP2PPP/RN2K1NR b KQq - 0 8");
   }
 }

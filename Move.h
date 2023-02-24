@@ -37,163 +37,42 @@ inline Direction relativeDir(Direction dir)
 template<Color col, int rank>
 static constexpr int RelativeRank = col == Color::WHT ? (7 - rank) : rank;
 
-template<Color Player>
-Piece makePiece(PieceType type)
+enum MoveType : uint8_t
 {
-  return Piece(uint8_t(Player) | type);
-}
-
-struct MvPiece
-{
-  int mFrom;
-  int mTo;
-
-  void commit(Position& p) const;
-  void revert(Position& p) const;
+  SILENT  = 0,
+  CAPTURE = 1,   // r
+  MV_KNG,        // c
+  MV_ROK,        // c
+  PUSH,          // r
+  DBL_PUSH,      // r
+  ENPASSANT,     // r
+  PRM_HRS,       // r
+  PRM_BSH,       // r
+  PRM_ROK,       // r
+  PRM_QEN,       // r
+  PRC_HRS,       // r
+  PRC_BSH,       // r
+  PRC_ROK,       // r
+  PRC_QEN,       // r
+  CASTLE_SHORT,  // c
+  CASTLE_LONG,   // c
 };
 
-template<Color Player>
-struct MvEnpassant
+struct Move
 {
-  int       mFrom;
-  Direction mSide;
-
-  int  target() const { return mFrom + relativeDir<Player>(mSide); }
-  int  dest() const { return target() + RelativeDir<N, Player>; }
-  void commit(Position& p) const
-  {
-    p.resetHalfMoveCount();
-    p.move(mFrom, dest()).remove(target());
-  }
-  void revert(Position& p) const
-  {
-    static constexpr Color Enemy = Player == WHT ? BLK : WHT;
-    p.move(dest(), mFrom).put(target(), makePiece<Enemy>(PWN));
-  }
-};
-
-template<Color Player>
-struct MvDoublePush
-{
-  int mFrom;
-
-  int dest() const { return mFrom + 2 * RelativeDir<N, Player>; }
-
-  void commit(Position& p) const
-  {
-    p.resetHalfMoveCount();
-    int d = dest();
-    p.move(mFrom, d);
-    p.setEnpassantSq(d - RelativeDir<N, Player>);
-  }
-  void revert(Position& p) const { p.move(dest(), mFrom); }
-};
-
-template<Color Player>
-struct MvPromote
-{
-  uint8_t mFile;
-  Piece   mPromoted;
-
-  void commit(Position& p) const
-
-  {
-    p.resetHalfMoveCount();
-    p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 6>})
-      .put(glm::ivec2 {int(mFile), RelativeRank<Player, 7>}, mPromoted);
-  }
-  void revert(Position& p) const
-  {
-    p.remove(glm::ivec2 {int(mFile), RelativeRank<Player, 7>})
-      .put(glm::ivec2 {int(mFile), RelativeRank<Player, 6>},
-           Piece(uint8_t(Player) | PieceType::PWN));
-  }
-};
-
-template<Color Player>
-struct MvCapturePromote : MvPiece
-{
-  Piece mPromoted;
-
-  void commit(Position& p) const
-  {
-    p.resetHalfMoveCount();
-    MvPiece::commit(p);
-    p.put(mTo, mPromoted);
-  }
-  void revert(Position& p) const
-  {
-    MvPiece::revert(p);
-    p.put(mFrom, makePiece<Player>(PWN));
-  }
-};
-
-template<Color Player>
-struct MvCastleShort
-{
-  static constexpr int    Rank   = RelativeRank<Player, 0>;
-  static constexpr Castle Rights = Castle(Player == BLK   ? 0b11
-                                          : Player == WHT ? 0b1100
-                                                          : 0);
-
-  void commit(Position& p) const
-  {
-    p.revokeCastlingRights(Rights);
-    p.move({4, Rank}, {6, Rank}).move({7, Rank}, {5, Rank});
-  }
-  void revert(Position& p) const
-  {
-    p.move({5, Rank}, {7, Rank}).move({6, Rank}, {4, Rank});
-  }
-};
-
-template<Color Player>
-struct MvCastleLong
-{
-  static constexpr int    Rank   = RelativeRank<Player, 0>;
-  static constexpr Castle Rights = Castle(Player == BLK   ? 0b11
-                                          : Player == WHT ? 0b1100
-                                                          : 0);
-
-  void commit(Position& p) const
-  {
-    p.revokeCastlingRights(Rights);
-    p.move({4, Rank}, {2, Rank}).move({0, Rank}, {3, Rank});
-  }
-  void revert(Position& p) const
-  {
-    p.move({2, Rank}, {4, Rank}).move({3, Rank}, {0, Rank});
-  }
-};
-
-struct Move  // Wraps all moves in a variant.
-{
-private:
-  using VariantType = std::variant<MvPiece,
-                                   MvDoublePush<BLK>,
-                                   MvDoublePush<WHT>,
-                                   MvEnpassant<BLK>,
-                                   MvEnpassant<WHT>,
-                                   MvPromote<BLK>,
-                                   MvPromote<WHT>,
-                                   MvCapturePromote<BLK>,
-                                   MvCapturePromote<WHT>,
-                                   MvCastleShort<BLK>,
-                                   MvCastleShort<WHT>,
-                                   MvCastleLong<BLK>,
-                                   MvCastleLong<WHT>>;
-  VariantType mVar;
-
-public:
   Move() = default;
-  template<typename TMove>
-  explicit Move(const TMove m)
-      : mVar(m)
-  {}
+  Move(MoveType type, int from, int to);
+  void     assign(MoveType type, int from, int to);
+  MoveType type() const;
+  int      from() const;
+  int      to() const;
+  void     commit(Position& p) const;
+  void     revert(Position& p) const;
 
-  const VariantType& value() const;
-  void               commit(Position& p) const;
-  void               revert(Position& p) const;
+private:
+  MoveType mType = SILENT;
+  uint8_t  mFrom = UINT8_MAX;
+  uint8_t  mTo   = UINT8_MAX;
 };
 
 struct MoveList
@@ -215,11 +94,7 @@ private:
   Move*                   mEnd;
 
 public:
-  template<typename TMove>
-  void operator+=(const TMove& mv)
-  {
-    *(mEnd++) = Move(mv);
-  }
+  void append(MoveType type, int from, int to);
 };
 
 int      pop(BitBoard& b);
@@ -233,7 +108,7 @@ void     perft(const Position& p, int depth);
 template<Color Player, PieceType... Types>
 BitBoard getBoard(const Position& p)
 {
-  return (p.board(makePiece<Player>(Types)) | ...);
+  return (p.board(Player | Types) | ...);
 }
 
 template<Color Player>
