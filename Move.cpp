@@ -53,13 +53,7 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
   static constexpr Direction Up               = RelativeDir<N, Player>;
   static constexpr int       HomeRank         = RelativeRank<Player, 0>;
   static constexpr int       EnemyHomeRank    = RelativeRank<Player, 7>;
-  switch (mtype) {
-  case SILENT:
-    p.incrementHalfMoveCount();
-    p.move(from, to);
-    break;
-  case CAPTURE:
-    p.resetHalfMoveCount();
+  if ((mtype & CAPTURE)) {
     if (p.piece(to) == (Enemy | ROK)) {
       if (to == EnemyHomeRank * 8) {
         p.revokeCastlingRights(EnemyCastleLong);
@@ -69,14 +63,16 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
       }
     }
     p.history().push({.mPiece = p.piece(to)});
-    p.move(from, to);
-    break;
+  }
+  switch (mtype) {
   case MV_KNG:
+    p.incrementHalfMoveCount();
     p.revokeCastlingRights(CastleShort | CastleLong);
     p.history().push({.mPiece = p.piece(to)});
     p.move(from, to);
     break;
   case MV_ROK:
+    p.incrementHalfMoveCount();
     if (from == KngSideRookPos) {
       p.revokeCastlingRights(CastleShort);
     }
@@ -142,8 +138,14 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
     p.revokeCastlingRights(CastleShort | CastleLong);
     p.move(HomeRank * 8 + 4, HomeRank * 8 + 2).move(HomeRank * 8 + 0, HomeRank * 8 + 3);
     break;
-  default:  // Do Nothing.
+  case OTHER:
+  default:  // Intentional fallthrough
+    p.incrementHalfMoveCount();
+    p.move(from, to);
     break;
+  }
+  if (mtype & CAPTURE) {
+    p.resetHalfMoveCount();
   }
 }
 
@@ -153,21 +155,9 @@ void revertMv(Position& p, MoveType mtype, int from, int to)
   static constexpr Color Enemy    = Player == WHT ? BLK : WHT;
   static constexpr int   HomeRank = RelativeRank<Player, 0>;
   switch (mtype) {
-  case SILENT:
-    p.move(to, from);
-    break;
-  case CAPTURE:
-    p.move(to, from).put(to, p.history().pop().mPiece);
-    break;
   case MV_KNG:
-    p.move(to, from).put(to, p.history().pop().mPiece);
-    break;
   case MV_ROK:
-    p.move(to, from).put(to, p.history().pop().mPiece);
-    break;
   case PUSH:
-    p.move(to, from);
-    break;
   case DBL_PUSH:
     p.move(to, from);
     break;
@@ -184,7 +174,7 @@ void revertMv(Position& p, MoveType mtype, int from, int to)
   case PRC_BSH:  // Intentional fall through
   case PRC_ROK:  // Intentional fall through
   case PRC_QEN:
-    p.remove(to).put(from, Player | PWN).put(to, p.history().pop().mPiece);
+    p.remove(to).put(from, Player | PWN);
     break;
   case CASTLE_SHORT:
     p.move(HomeRank * 8 + 6, HomeRank * 8 + 4).move(HomeRank * 8 + 5, HomeRank * 8 + 7);
@@ -192,8 +182,13 @@ void revertMv(Position& p, MoveType mtype, int from, int to)
   case CASTLE_LONG:
     p.move(HomeRank * 8 + 2, HomeRank * 8 + 4).move(HomeRank * 8 + 3, HomeRank * 8 + 0);
     break;
+  case OTHER:  // Intentional fall through
   default:
+    p.move(to, from);
     break;
+  }
+  if (mtype & CAPTURE) {
+    p.put(to, p.history().pop().mPiece);
   }
 }
 
@@ -223,6 +218,7 @@ void Move::revert(Position& p) const
   else if (p.turn() == BLK) {
     revertMv<BLK>(p, mType, from(), to());
   }
+  std::cout << p << std::endl;
   p.setHalfMoveCount(p.history().pop().mCounter);
   p.setMoveCount(p.history().pop().mCounter);
   p.setCastlingRights(p.history().pop().mCastlingRights);
@@ -285,8 +281,11 @@ const Move& MoveList::operator[](size_t i) const
   return mBuf[i];
 }
 
-void MoveList::append(MoveType type, int from, int to)
+void MoveList::append(MoveType type, int from, int to, bool isCapture)
 {
+  if (isCapture) {
+    type = type | CAPTURE;
+  }
   (mEnd++)->assign(type, from, to);
 }
 
@@ -575,7 +574,34 @@ void generateDiagSlides(const Position& p,
     }
     while (pmoves) {
       int dst = pop(pmoves);
-      moves.append(p.piece(dst) ? CAPTURE : SILENT, pos, dst);
+      moves.append(OTHER, pos, dst, p.piece(dst));
+    }
+  }
+}
+
+template<Color Player, PieceType PType>
+void generateOrthoSlidesHelper(const Position& p,
+                               MoveList&       moves,
+                               BitBoard        pinned,
+                               BitBoard        all,
+                               BitBoard        notself,
+                               BitBoard        mask,
+                               int             kingPos,
+                               MoveType        mtype)
+{
+  auto sliders = getBoard<Player, PType>(p);
+  while (sliders) {
+    int  pos    = pop(sliders);
+    auto pmoves = rookMoves(pos, all) & notself;
+    if (mask) {
+      pmoves &= mask;
+    }
+    if (OneHot[pos] & pinned) {
+      pmoves &= LineMask[kingPos][pos];
+    }
+    while (pmoves) {
+      int dst = pop(pmoves);
+      moves.append(mtype, pos, dst, p.piece(dst));
     }
   }
 }
@@ -589,21 +615,10 @@ void generateOrthoSlides(const Position& p,
                          BitBoard        mask,
                          int             kingPos)
 {
-  auto sliders = getBoard<Player, ROK, QEN>(p);
-  while (sliders) {
-    int  pos    = pop(sliders);
-    auto pmoves = rookMoves(pos, all) & notself;
-    if (mask) {
-      pmoves &= mask;
-    }
-    if (OneHot[pos] & pinned) {
-      pmoves &= LineMask[kingPos][pos];
-    }
-    while (pmoves) {
-      int dst = pop(pmoves);
-      moves.append(p.piece(dst) ? CAPTURE : SILENT, pos, dst);
-    }
-  }
+  generateOrthoSlidesHelper<Player, ROK>(
+    p, moves, pinned, all, notself, mask, kingPos, MV_ROK);
+  generateOrthoSlidesHelper<Player, QEN>(
+    p, moves, pinned, all, notself, mask, kingPos, OTHER);
 }
 
 template<Color Player>
@@ -643,7 +658,7 @@ void generateMoves(const Position& p, MoveList& moves)
     auto kmoves = KingMoves[kingPos] & (~(unsafe | self));
     while (kmoves) {
       int dst = pop(kmoves);
-      moves.append(p.piece(dst) ? CAPTURE : SILENT, kingPos, dst);
+      moves.append(MV_KNG, kingPos, dst, p.piece(dst));
     }
   }
   BitBoard pinned   = 0;
@@ -722,7 +737,7 @@ void generateMoves(const Position& p, MoveList& moves)
       auto hmoves = KnightMoves[hpos] & (checkers | line) & notself;
       while (hmoves) {
         int dst = pop(hmoves);
-        moves.append(p.piece(dst) ? CAPTURE : SILENT, hpos, dst);
+        moves.append(OTHER, hpos, dst, p.piece(dst));
       }
     }
     generateDiagSlides<Player>(p, moves, pinned, all, notself, line, kingPos);
@@ -757,7 +772,7 @@ void generateMoves(const Position& p, MoveList& moves)
       auto pmoves = KnightMoves[pos] & notself;
       while (pmoves) {
         int dst = pop(pmoves);
-        moves.append(p.piece(dst) ? CAPTURE : SILENT, pos, dst);
+        moves.append(OTHER, pos, dst, p.piece(dst));
       }
     }
     // Sliders

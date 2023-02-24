@@ -10,22 +10,20 @@
 
 using namespace potato;
 
-TEST_CASE("Fen Consistency", "[fen][consistency][debug]")
+TEST_CASE("Fen Consistency", "[fen][consistency]")
 {
   SECTION("Case 1")
   {
     Position p =
       Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
-    std::cout << p << std::endl;
     Move(DBL_PUSH, B7, B5).commit(p);
-    std::cout << p << std::endl;
     REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
   }
   SECTION("Case 2")
   {
     Position p =
       Position::fromFen("rnbqkbnr/pppp1ppp/4p3/8/5P2/5N2/PPPPP1PP/RNBQKB1R b KQkq - 1 2");
-    Move(SILENT, D8, H4).commit(p);
+    Move(OTHER, D8, H4).commit(p);
     REQUIRE(p.fen() == "rnb1kbnr/pppp1ppp/4p3/8/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
   }
   SECTION("Case 3")
@@ -40,20 +38,35 @@ TEST_CASE("Fen Consistency", "[fen][consistency][debug]")
   {
     Position p = Position::fromFen(
       "r1bqk2r/ppppbp1p/8/3nB1p1/2B1P3/3P4/PPP2PPP/RN2K1NR w KQkq - 0 8");
-    Move(CAPTURE, E5, H8).commit(p);
+    Move(OTHER | CAPTURE, E5, H8).commit(p);
     REQUIRE(p.fen() == "r1bqk2B/ppppbp1p/8/3n2p1/2B1P3/3P4/PPP2PPP/RN2K1NR b KQq - 0 8");
+  }
+  SECTION("Case 5")
+  {
+    Position p = Position::fromFen(
+      "r1bqkb1r/1pp2ppp/2n5/pB1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 w kq - 0 7");
+    Move(OTHER | CAPTURE, B5, C6).commit(p);
+    REQUIRE(p.fen() == "r1bqkb1r/1pp2ppp/2B5/p2pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 0 7");
+  }
+  SECTION("Case 6")
+  {
+    Position p = Position::fromFen(
+      "r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6");
+    Move(MV_ROK, A8, B8).commit(p);
+    std::string expected =
+      "1rbqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 w k - 2 7";
+    REQUIRE(p.fen() == expected);
+    REQUIRE(Position::fromFen(expected) == p);
   }
 }
 
-// TEST_CASE("Perft From Starting Position", "[perft][debug]")
-// {
-//   Position p = Position::fromFen("8/8/8/n5N1/P1b1K3/q7/1P4p1/B2k3Q b - - 1 3");
-//   // std::cout << p << std::endl;
-//   {
-//     Timer timer("Perft");
-//     perft(p, 6);
-//   }
-// }
+TEST_CASE("Debugging", "[perft][debug]")
+{
+  Position p =
+    Position::fromFen("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6");
+  MoveList mlist;
+  generateMoves(p, mlist);
+}
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {

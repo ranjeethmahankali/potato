@@ -221,7 +221,7 @@ size_t Position::hash() const
 bool Position::operator==(const Position& other) const
 {
   return mPieces == other.mPieces && mBitBoards == other.mBitBoards &&
-         mHistory == other.mHistory && mHash == other.mHash &&
+         /*mHistory == other.mHistory&&*/ mHash == other.mHash &&
          mHalfMoveCount == other.mHalfMoveCount && mMoveCount == other.mMoveCount &&
          mEnPassantSquare == other.mEnPassantSquare &&
          mCastlingRights == other.mCastlingRights && mTurn == other.mTurn;
@@ -640,6 +640,7 @@ ostream& operator<<(ostream& os, const Position& b)
   os << std::endl;
   os << "Turn: " << b.turn() << std::endl;
   os << "Castling rights: " << b.castlingRights() << std::endl;
+  os << "Halfmoves: " << b.halfMoveCount() << "; Moves: " << b.moveCount() << std::endl;
   return os;
 }
 

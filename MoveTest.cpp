@@ -34,6 +34,7 @@ static void doPerftTest(const std::string&      fenstr,
       auto mvd = moves.top();
       moves.pop();
       while (mvd.second <= current.size()) {
+        std::cout << p << std::endl << current.top() << std::endl;
         current.top().revert(p);
         current.pop();
         positions.pop();
