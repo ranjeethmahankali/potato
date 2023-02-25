@@ -172,10 +172,9 @@ private:
 
   std::array<Piece, 64>               mPieces;
   std::array<BitBoard, NUniquePieces> mBitBoards;
-  StaticVector<State, 32>             mHistory;
+  StaticVector<State, 32>             mState;
   StaticVector<Piece, 64>             mCaptured;
   size_t                              mHash = 0;
-  State                               mState;
   Color                               mTurn = Color::WHT;
 };
 

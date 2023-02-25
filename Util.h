@@ -93,6 +93,7 @@ public:
   }
   void     push_back(const T& val) { *(mEnd++) = val; }
   const T& back() const { return *(mEnd - 1); }
+  T&       back() { return *(mEnd - 1); }
   void     pop_back() { --mEnd; }
 };
 

@@ -143,32 +143,32 @@ BitBoard Position::board(Piece p) const
 
 int Position::enpassantSq() const
 {
-  return mState.mEnPassantSquare;
+  return mState.back().mEnPassantSquare;
 }
 
 Castle Position::castlingRights() const
 {
-  return mState.mCastlingRights;
+  return mState.back().mCastlingRights;
 }
 
 void Position::setEnpassantSq(int enp)
 {
-  mState.mEnPassantSquare = enp;
+  mState.back().mEnPassantSquare = enp;
 }
 
 void Position::unsetEnpassantSq()
 {
-  mState.mEnPassantSquare = -1;
+  mState.back().mEnPassantSquare = -1;
 }
 
 void Position::setCastlingRights(Castle c)
 {
-  mState.mCastlingRights = c;
+  mState.back().mCastlingRights = c;
 }
 
 void Position::revokeCastlingRights(Castle c)
 {
-  mState.mCastlingRights = Castle(mState.mCastlingRights & ~c);
+  mState.back().mCastlingRights = Castle(mState.back().mCastlingRights & ~c);
 }
 
 Color Position::turn() const
@@ -191,10 +191,9 @@ void Position::clear()
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
   std::fill(mBitBoards.begin(), mBitBoards.end(), 0);
   mBitBoards[Piece::NONE] = 0xffffffffffffffff;  // All squares contain the NONE piece.
-  mState.mHalfMoveCount   = 0;
-  mState.mMoveCount       = 1;
-  mState.mEnPassantSquare = -1;
-  mTurn                   = Color::WHT;
+  mState.clear();
+  mState.push_back(State());
+  mTurn = Color::WHT;
   calcHash();
 }
 
@@ -206,11 +205,12 @@ size_t Position::hash() const
 bool Position::operator==(const Position& other) const
 {
   return mPieces == other.mPieces && mBitBoards == other.mBitBoards &&
-         /*mHistory == other.mHistory &&*/ mHash == other.mHash &&
-         mState.mHalfMoveCount == other.mState.mHalfMoveCount &&
-         mState.mMoveCount == other.mState.mMoveCount &&
-         mState.mEnPassantSquare == other.mState.mEnPassantSquare &&
-         mState.mCastlingRights == other.mState.mCastlingRights && mTurn == other.mTurn;
+         /*mState == other.mState &&*/ mHash == other.mHash &&
+         mState.back().mHalfMoveCount == other.mState.back().mHalfMoveCount &&
+         mState.back().mMoveCount == other.mState.back().mMoveCount &&
+         mState.back().mEnPassantSquare == other.mState.back().mEnPassantSquare &&
+         mState.back().mCastlingRights == other.mState.back().mCastlingRights &&
+         mTurn == other.mTurn;
 }
 
 bool Position::operator!=(const Position& other) const
@@ -439,10 +439,10 @@ Position Position::fromFen(const std::string& fen)
   board.clear();
   parsePlacement(results[1], board);
   board.mTurn = parseActiveColor(results[2]);
-  parseCastlingRights(results[3], board.mState.mCastlingRights);
-  parseEnpassant(results[4], board.mState.mEnPassantSquare);
-  board.mState.mHalfMoveCount = std::stoi(results[5]);
-  board.mState.mMoveCount     = std::stoi(results[6]);
+  parseCastlingRights(results[3], board.mState.back().mCastlingRights);
+  parseEnpassant(results[4], board.mState.back().mEnPassantSquare);
+  board.mState.back().mHalfMoveCount = std::stoi(results[5]);
+  board.mState.back().mMoveCount     = std::stoi(results[6]);
   return board;
 }
 
@@ -481,14 +481,14 @@ std::string Position::fen() const
     out += mTurn == BLK ? " b" : " w";
   }
   {  // Castling
-    if (!mState.mCastlingRights) {
+    if (!mState.back().mCastlingRights) {
       out += " -";
     }
     else {
       static constexpr std::array<char, 4> sSymbols = {{'q', 'k', 'Q', 'K'}};
       out.push_back(' ');
       for (int i = 4; i > -1; --i) {
-        if (mState.mCastlingRights & (1 << i)) {
+        if (mState.back().mCastlingRights & (1 << i)) {
           out.push_back(sSymbols[i]);
         }
       }
@@ -496,56 +496,57 @@ std::string Position::fen() const
   }
   {
     out.push_back(' ');
-    out += mState.mEnPassantSquare == -1 ? "-" : SquareCoord[mState.mEnPassantSquare];
+    out += mState.back().mEnPassantSquare == -1
+             ? "-"
+             : SquareCoord[mState.back().mEnPassantSquare];
   }
-  out += " " + std::to_string(mState.mHalfMoveCount);
-  out += " " + std::to_string(mState.mMoveCount);
+  out += " " + std::to_string(mState.back().mHalfMoveCount);
+  out += " " + std::to_string(mState.back().mMoveCount);
   return out;
 }
 
 void Position::incrementMoveCounter()
 {
-  ++mState.mMoveCount;
+  ++(mState.back().mMoveCount);
 }
 
 void Position::incrementHalfMoveCount()
 {
-  ++mState.mHalfMoveCount;
+  ++(mState.back().mHalfMoveCount);
 }
 
 void Position::resetHalfMoveCount()
 {
-  mState.mHalfMoveCount = 0;
+  mState.back().mHalfMoveCount = 0;
 }
 
 void Position::setMoveCount(int c)
 {
-  mState.mMoveCount = c;
+  mState.back().mMoveCount = c;
 }
 
 void Position::setHalfMoveCount(int c)
 {
-  mState.mHalfMoveCount = c;
+  mState.back().mHalfMoveCount = c;
 }
 
 int Position::moveCount() const
 {
-  return mState.mMoveCount;
+  return mState.back().mMoveCount;
 }
 int Position::halfMoveCount() const
 {
-  return mState.mHalfMoveCount;
+  return mState.back().mHalfMoveCount;
 }
 
 void Position::pushState()
 {
-  mHistory.push_back(mState);
+  mState.push_back(mState.back());
 }
 
 void Position::popState()
 {
-  mState = mHistory.back();
-  mHistory.pop_back();
+  mState.pop_back();
 }
 
 void Position::pushCapture(Piece p)
