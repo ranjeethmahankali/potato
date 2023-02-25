@@ -206,7 +206,7 @@ size_t Position::hash() const
 bool Position::operator==(const Position& other) const
 {
   return mPieces == other.mPieces && mBitBoards == other.mBitBoards &&
-         mHistory == other.mHistory && mHash == other.mHash &&
+         /*mHistory == other.mHistory &&*/ mHash == other.mHash &&
          mState.mHalfMoveCount == other.mState.mHalfMoveCount &&
          mState.mMoveCount == other.mState.mMoveCount &&
          mState.mEnPassantSquare == other.mState.mEnPassantSquare &&

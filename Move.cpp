@@ -53,7 +53,9 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
   static constexpr Direction Up               = RelativeDir<N, Player>;
   static constexpr int       HomeRank         = RelativeRank<Player, 0>;
   static constexpr int       EnemyHomeRank    = RelativeRank<Player, 7>;
-  if ((mtype & CAPTURE)) {
+  bool                       isCapture        = mtype & CAPTURE;
+  mtype                                       = MoveType(mtype & ~CAPTURE);
+  if (isCapture) {
     if (p.piece(to) == (Enemy | ROK)) {
       if (to == EnemyHomeRank * 8) {
         p.revokeCastlingRights(EnemyCastleLong);
@@ -138,7 +140,7 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
     p.move(from, to);
     break;
   }
-  if (mtype & CAPTURE) {
+  if (isCapture) {
     p.resetHalfMoveCount();
   }
 }
@@ -146,8 +148,10 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
 template<Color Player>
 void revertMv(Position& p, MoveType mtype, int from, int to)
 {
-  static constexpr Color Enemy    = Player == WHT ? BLK : WHT;
-  static constexpr int   HomeRank = RelativeRank<Player, 0>;
+  static constexpr Color Enemy     = Player == WHT ? BLK : WHT;
+  static constexpr int   HomeRank  = RelativeRank<Player, 0>;
+  bool                   isCapture = mtype & CAPTURE;
+  mtype                            = MoveType(mtype & ~CAPTURE);
   switch (mtype) {
   case MV_KNG:
   case MV_ROK:
@@ -181,7 +185,7 @@ void revertMv(Position& p, MoveType mtype, int from, int to)
     p.move(to, from);
     break;
   }
-  if (mtype & CAPTURE) {
+  if (isCapture) {
     p.put(to, p.popCapture());
   }
 }
@@ -216,7 +220,7 @@ std::string Move::algebraic() const
 {
   std::string out = std::string(SquareCoord[from()]);
   out += SquareCoord[to()];
-  switch (type()) {
+  switch (type() & ~CAPTURE) {
   case PRM_HRS:
   case PRC_HRS:
     out.push_back('n');
@@ -367,7 +371,7 @@ void generatePawnCaptures(const Position& p,
     int pto   = pop(pmoves);
     int pfrom = pto - RelativeDir<Dir, Player>;
     if (LineMask[pfrom][kingPos] & OneHot[pto]) {
-      moves.append(CAPTURE, pfrom, pto);
+      moves.append(CAPTURE | OTHER, pfrom, pto);
     }
   }
 }
@@ -395,10 +399,10 @@ void generatePawnCapturePromotions(const Position& p,
   while (pmoves) {
     int to   = pop(pmoves);
     int from = to - RelativeDir<Dir, Player>;
-    moves.append(PRC_HRS, from, to);
-    moves.append(PRC_BSH, from, to);
-    moves.append(PRC_ROK, from, to);
-    moves.append(PRC_QEN, from, to);
+    moves.append(CAPTURE | PRC_HRS, from, to);
+    moves.append(CAPTURE | PRC_BSH, from, to);
+    moves.append(CAPTURE | PRC_ROK, from, to);
+    moves.append(CAPTURE | PRC_QEN, from, to);
   }
 }
 
@@ -751,11 +755,13 @@ void generateMoves(const Position& p, MoveList& moves)
     Castle rights = p.castlingRights();
     if ((rights & CastleLong) && !(CastleLongEmptyMask & all) &&
         !(CastleLongSafeMask & unsafe)) {
-      moves.append(CASTLE_LONG, 0, 0);
+      moves.append(
+        CASTLE_LONG, RelativeRank<Player, 0> * 8 + 4, RelativeRank<Player, 0> * 8 + 2);
     }
     if ((rights & CastleShort) && !(CastleShortEmptyMask & all) &&
         !(CastleShortSafeMask & unsafe)) {
-      moves.append(CASTLE_SHORT, 0, 0);
+      moves.append(
+        CASTLE_SHORT, RelativeRank<Player, 0> * 8 + 4, RelativeRank<Player, 0> * 8 + 6);
     }
   }
 }

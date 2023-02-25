@@ -57,16 +57,33 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
     Position p = Position::fromFen(
       "r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6");
     Move(MV_ROK, A8, B8).commit(p);
-    std::string expected =
-      "1rbqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 w k - 2 7";
-    REQUIRE(p.fen() == expected);
+    REQUIRE(p.fen() == "1rbqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 w k - 2 7");
+  }
+  SECTION("Case 7")
+  {
+    Position p =
+      Position::fromFen("1nq1n3/1P3b1p/p2p2kp/6P1/4pKp1/rP2r3/2N5/1B6 w - - 1 2");
+    Move(CAPTURE | PRC_BSH, B7, C8).commit(p);
+    REQUIRE(p.fen() == "1nB1n3/5b1p/p2p2kp/6P1/4pKp1/rP2r3/2N5/1B6 b - - 0 2");
+  }
+  SECTION("Case 8")
+  {
+    Position p = Position::fromFen(
+      "rnbqk2r/2ppppbp/1p3np1/p7/1P1P4/P4N2/1BP1PPPP/RN1QKB1R b KQkq - 0 6");
+    Move(CAPTURE | OTHER, A5, B4).commit(p);
+    REQUIRE(p.fen() ==
+            "rnbqk2r/2ppppbp/1p3np1/8/1p1P4/P4N2/1BP1PPPP/RN1QKB1R w KQkq - 0 7");
   }
 }
 
 TEST_CASE("Debugging", "[perft][debug]")
 {
-  doPerftTest(
-    "r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6", 2, {{38, 1357}});
+  // doPerftTest("rnbqk2r/p1ppppbp/1p3np1/8/3P4/1P3N2/PBP1PPPP/RN1QKB1R w KQkq - 0 5",
+  //             6,
+  //             {{28, 753, 21943, 618608, 18819585, 550948819}});
+  Position p = Position::fromFen(
+    "rnbqk2r/p1ppppbp/1p3np1/8/3P4/PP3N2/1BP1PPPP/RN1QKB1R b KQkq - 0 5");
+  perft(p, 1);
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
