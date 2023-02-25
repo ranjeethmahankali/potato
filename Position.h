@@ -196,4 +196,6 @@ struct hash<potato::Position>
 
 ostream& operator<<(ostream& os, const potato::Position& b);
 
+ostream& operator<<(ostream& os, potato::Castle rights);
+
 }  // namespace std

@@ -14,6 +14,19 @@ void doPerftTest(const std::string&      fenstr,
                  size_t                  depth,
                  std::span<const size_t> expected);
 
+TEST_CASE("Debugging", "[perft][debug]")
+{
+  // doPerftTest("rnbqk2r/p1ppppbp/1p3np1/8/3P4/1P3N2/PBP1PPPP/RN1QKB1R w KQkq - 0 5",
+  //             6,
+  //             {{28, 753, 21943, 618608, 18819585, 550948819}});
+  Position p = Position::fromFen(
+    "rnbqk2r/2ppppbp/1p3np1/p7/1P1P4/P4N2/1BP1PPPP/RN1QKB1R b KQkq - 0 6");
+  perft(p, 3);
+  p = Position::fromFen(
+    "Comparing fen: rnbqk2r/2ppppbp/1p3np1/8/1p1P4/P4N2/1BP1PPPP/RN1QKB1R w KQkq - 0 7");
+  perft(p, 2);
+}
+
 TEST_CASE("Fen Consistency", "[fen][consistency]")
 {
   SECTION("Case 1")
@@ -74,16 +87,6 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
     REQUIRE(p.fen() ==
             "rnbqk2r/2ppppbp/1p3np1/8/1p1P4/P4N2/1BP1PPPP/RN1QKB1R w KQkq - 0 7");
   }
-}
-
-TEST_CASE("Debugging", "[perft][debug]")
-{
-  // doPerftTest("rnbqk2r/p1ppppbp/1p3np1/8/3P4/1P3N2/PBP1PPPP/RN1QKB1R w KQkq - 0 5",
-  //             6,
-  //             {{28, 753, 21943, 618608, 18819585, 550948819}});
-  Position p = Position::fromFen(
-    "rnbqk2r/p1ppppbp/1p3np1/8/3P4/PP3N2/1BP1PPPP/RN1QKB1R b KQkq - 0 5");
-  perft(p, 1);
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")

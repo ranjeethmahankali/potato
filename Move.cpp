@@ -360,7 +360,7 @@ void generatePawnCaptures(const Position& p,
   }
   while (pmoves) {
     int pos = pop(pmoves);
-    moves.append(CAPTURE, pos - RelativeDir<Dir, Player>, pos);
+    moves.append(CAPTURE | OTHER, pos - RelativeDir<Dir, Player>, pos);
   }
   // pinned.
   pmoves = shift<RelativeDir<Dir, Player>>(pcs & pinned) & enemy;
