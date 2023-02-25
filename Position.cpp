@@ -6,37 +6,22 @@
 
 namespace potato {
 
-bool HistoryData::operator==(const HistoryData& other) const
-{
-  return std::memcmp(this, &other, sizeof(HistoryData)) == 0;
-}
-bool HistoryData::operator!=(const HistoryData& other) const
-{
-  return !(*this == other);
-}
-
-HistoryData History::pop()
-{
-  HistoryData h = std::stack<HistoryData>::top();
-  std::stack<HistoryData>::pop();
-  return h;
-}
-
-Color color(Piece pc)
-{
-  return Color(pc & 0b1000);
-}
-
-PieceType type(Piece pc)
-{
-  return PieceType(pc & 0b111);
-}
-
 char symbol(Piece pc)
 {
   static constexpr std::array<char, NUniquePieces> sSymbols = {
     {'_', 'p', 'n', 'b', 'r', 'q', 'k', '_', '_', 'P', 'N', 'B', 'R', 'Q', 'K'}};
   return sSymbols[pc];
+}
+
+bool Position::State::operator==(const State& s) const
+{
+  return mEnPassantSquare == s.mEnPassantSquare && mCastlingRights == s.mCastlingRights &&
+         mHalfMoveCount == s.mHalfMoveCount && mMoveCount == s.mMoveCount;
+}
+
+bool Position::State::operator!=(const State& s) const
+{
+  return !(*this == s);
 }
 
 Position::Position()
@@ -158,32 +143,32 @@ BitBoard Position::board(Piece p) const
 
 int Position::enpassantSq() const
 {
-  return mEnPassantSquare;
+  return mState.mEnPassantSquare;
 }
 
 Castle Position::castlingRights() const
 {
-  return mCastlingRights;
+  return mState.mCastlingRights;
 }
 
 void Position::setEnpassantSq(int enp)
 {
-  mEnPassantSquare = enp;
+  mState.mEnPassantSquare = enp;
 }
 
 void Position::unsetEnpassantSq()
 {
-  mEnPassantSquare = -1;
+  mState.mEnPassantSquare = -1;
 }
 
 void Position::setCastlingRights(Castle c)
 {
-  mCastlingRights = c;
+  mState.mCastlingRights = c;
 }
 
 void Position::revokeCastlingRights(Castle c)
 {
-  mCastlingRights = Castle(mCastlingRights & ~c);
+  mState.mCastlingRights = Castle(mState.mCastlingRights & ~c);
 }
 
 Color Position::turn() const
@@ -206,9 +191,9 @@ void Position::clear()
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
   std::fill(mBitBoards.begin(), mBitBoards.end(), 0);
   mBitBoards[Piece::NONE] = 0xffffffffffffffff;  // All squares contain the NONE piece.
-  mHalfMoveCount          = 0;
-  mMoveCount              = 1;
-  mEnPassantSquare        = -1;
+  mState.mHalfMoveCount   = 0;
+  mState.mMoveCount       = 1;
+  mState.mEnPassantSquare = -1;
   mTurn                   = Color::WHT;
   calcHash();
 }
@@ -221,10 +206,11 @@ size_t Position::hash() const
 bool Position::operator==(const Position& other) const
 {
   return mPieces == other.mPieces && mBitBoards == other.mBitBoards &&
-         /*mHistory == other.mHistory&&*/ mHash == other.mHash &&
-         mHalfMoveCount == other.mHalfMoveCount && mMoveCount == other.mMoveCount &&
-         mEnPassantSquare == other.mEnPassantSquare &&
-         mCastlingRights == other.mCastlingRights && mTurn == other.mTurn;
+         mHistory == other.mHistory && mHash == other.mHash &&
+         mState.mHalfMoveCount == other.mState.mHalfMoveCount &&
+         mState.mMoveCount == other.mState.mMoveCount &&
+         mState.mEnPassantSquare == other.mState.mEnPassantSquare &&
+         mState.mCastlingRights == other.mState.mCastlingRights && mTurn == other.mTurn;
 }
 
 bool Position::operator!=(const Position& other) const
@@ -453,10 +439,10 @@ Position Position::fromFen(const std::string& fen)
   board.clear();
   parsePlacement(results[1], board);
   board.mTurn = parseActiveColor(results[2]);
-  parseCastlingRights(results[3], board.mCastlingRights);
-  parseEnpassant(results[4], board.mEnPassantSquare);
-  board.mHalfMoveCount = std::stoi(results[5]);
-  board.mMoveCount     = std::stoi(results[6]);
+  parseCastlingRights(results[3], board.mState.mCastlingRights);
+  parseEnpassant(results[4], board.mState.mEnPassantSquare);
+  board.mState.mHalfMoveCount = std::stoi(results[5]);
+  board.mState.mMoveCount     = std::stoi(results[6]);
   return board;
 }
 
@@ -495,14 +481,14 @@ std::string Position::fen() const
     out += mTurn == BLK ? " b" : " w";
   }
   {  // Castling
-    if (!mCastlingRights) {
+    if (!mState.mCastlingRights) {
       out += " -";
     }
     else {
       static constexpr std::array<char, 4> sSymbols = {{'q', 'k', 'Q', 'K'}};
       out.push_back(' ');
       for (int i = 4; i > -1; --i) {
-        if (mCastlingRights & (1 << i)) {
+        if (mState.mCastlingRights & (1 << i)) {
           out.push_back(sSymbols[i]);
         }
       }
@@ -510,50 +496,68 @@ std::string Position::fen() const
   }
   {
     out.push_back(' ');
-    out += mEnPassantSquare == -1 ? "-" : SquareCoord[mEnPassantSquare];
+    out += mState.mEnPassantSquare == -1 ? "-" : SquareCoord[mState.mEnPassantSquare];
   }
-  out += " " + std::to_string(mHalfMoveCount);
-  out += " " + std::to_string(mMoveCount);
+  out += " " + std::to_string(mState.mHalfMoveCount);
+  out += " " + std::to_string(mState.mMoveCount);
   return out;
-}
-
-History& Position::history()
-{
-  return mHistory;
 }
 
 void Position::incrementMoveCounter()
 {
-  ++mMoveCount;
+  ++mState.mMoveCount;
 }
 
 void Position::incrementHalfMoveCount()
 {
-  ++mHalfMoveCount;
+  ++mState.mHalfMoveCount;
 }
 
 void Position::resetHalfMoveCount()
 {
-  mHalfMoveCount = 0;
+  mState.mHalfMoveCount = 0;
 }
 
 void Position::setMoveCount(int c)
 {
-  mMoveCount = c;
+  mState.mMoveCount = c;
 }
 
 void Position::setHalfMoveCount(int c)
 {
-  mHalfMoveCount = c;
+  mState.mHalfMoveCount = c;
 }
 
 int Position::moveCount() const
 {
-  return mMoveCount;
+  return mState.mMoveCount;
 }
 int Position::halfMoveCount() const
 {
-  return mHalfMoveCount;
+  return mState.mHalfMoveCount;
+}
+
+void Position::pushState()
+{
+  mHistory.push_back(mState);
+}
+
+void Position::popState()
+{
+  mState = mHistory.back();
+  mHistory.pop_back();
+}
+
+void Position::pushCapture(Piece p)
+{
+  mCaptured.push_back(p);
+}
+
+Piece Position::popCapture()
+{
+  Piece p = mCaptured.back();
+  mCaptured.pop_back();
+  return p;
 }
 
 bool Position::valid() const

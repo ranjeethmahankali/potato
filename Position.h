@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Tables.h>
+#include <Util.h>
 #include <stdint.h>
 #include <array>
 #include <cstdint>
@@ -100,32 +101,32 @@ constexpr inline Castle operator&(Castle a, Castle b)
   return Castle(uint8_t(a) & b);
 }
 
-union HistoryData
+constexpr inline Color color(Piece pc)
 {
-  Piece  mPiece;
-  int    mEnpassantSq;
-  int    mCounter = 0;
-  Castle mCastlingRights;
+  return Color(pc & 0b1000);
+}
 
-  bool operator==(const HistoryData& other) const;
-  bool operator!=(const HistoryData& other) const;
-};
-
-struct History : public std::stack<HistoryData>
+constexpr inline PieceType type(Piece pc)
 {
-  HistoryData pop();
+  return PieceType(pc & 0b111);
+}
 
-private:
-  using std::stack<HistoryData>::top;
-};
-
-Color     color(Piece pc);
-PieceType type(Piece pc);
-char      symbol(Piece pc);
+char symbol(Piece pc);
 
 class Position
 {
 public:
+  struct State
+  {
+    int    mHalfMoveCount   = 0;
+    int    mMoveCount       = 1;
+    int    mEnPassantSquare = -1;
+    Castle mCastlingRights  = Castle(0b1111);
+
+    bool operator==(const State&) const;
+    bool operator!=(const State&) const;
+  };
+
   Position();
   Position&       put(int pos, Piece pc);
   Position&       put(glm::ivec2 pos, Piece pc);
@@ -150,7 +151,6 @@ public:
   size_t          hash() const;
   bool            valid() const;
   std::string     fen() const;
-  History&        history();
   void            incrementMoveCounter();
   void            incrementHalfMoveCount();
   void            resetHalfMoveCount();
@@ -158,24 +158,25 @@ public:
   void            setHalfMoveCount(int c);
   int             moveCount() const;
   int             halfMoveCount() const;
+  void            pushState();
+  void            popState();
+  void            pushCapture(Piece p);
+  Piece           popCapture();
   static Position empty();
   static Position fromFen(const std::string& fen);
-
-  bool operator==(const Position& other) const;
-  bool operator!=(const Position& other) const;
+  bool            operator==(const Position& other) const;
+  bool            operator!=(const Position& other) const;
 
 private:
   void calcHash();
 
   std::array<Piece, 64>               mPieces;
   std::array<BitBoard, NUniquePieces> mBitBoards;
-  History                             mHistory;
-  size_t                              mHash            = 0;
-  int                                 mHalfMoveCount   = 0;
-  int                                 mMoveCount       = 1;
-  int                                 mEnPassantSquare = -1;
-  Castle                              mCastlingRights  = Castle(0b1111);
-  Color                               mTurn            = Color::WHT;
+  StaticVector<State, 32>             mHistory;
+  StaticVector<Piece, 64>             mCaptured;
+  size_t                              mHash = 0;
+  State                               mState;
+  Color                               mTurn = Color::WHT;
 };
 
 void      writeBoard(BitBoard b, std::ostream& os);

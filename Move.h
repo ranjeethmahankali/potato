@@ -2,6 +2,7 @@
 
 #include <Position.h>
 #include <Tables.h>
+#include <Util.h>
 #include <stdint.h>
 #include <bit>
 #include <variant>
@@ -80,6 +81,12 @@ struct Move
   int      to() const;
   void     commit(Position& p) const;
   void     revert(Position& p) const;
+  /**
+   * @brief Long algebraic notation of the move.
+   *
+   * @return std::string
+   */
+  std::string algebraic() const;
 
 private:
   MoveType mType = OTHER;
@@ -87,24 +94,8 @@ private:
   uint8_t  mTo   = UINT8_MAX;
 };
 
-struct MoveList
+struct MoveList : public StaticVector<Move, 256>
 {
-  MoveList();
-  MoveList(const MoveList&);
-  MoveList(MoveList&&);
-  const MoveList& operator=(const MoveList&);
-  const MoveList& operator=(MoveList&&);
-  const Move*     begin() const;
-  const Move*     end() const;
-  size_t          size() const;
-  void            clear();
-  const Move&     operator[](size_t i) const;
-
-private:
-  static constexpr size_t MaxMoves = 256;
-  std::array<Move, 256>   mBuf;
-  Move*                   mEnd;
-
 public:
   void append(MoveType type, int from, int to, bool isCapture = false);
 };

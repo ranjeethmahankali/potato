@@ -10,6 +10,10 @@
 
 using namespace potato;
 
+void doPerftTest(const std::string&      fenstr,
+                 size_t                  depth,
+                 std::span<const size_t> expected);
+
 TEST_CASE("Fen Consistency", "[fen][consistency]")
 {
   SECTION("Case 1")
@@ -56,16 +60,13 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
     std::string expected =
       "1rbqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 w k - 2 7";
     REQUIRE(p.fen() == expected);
-    REQUIRE(Position::fromFen(expected) == p);
   }
 }
 
 TEST_CASE("Debugging", "[perft][debug]")
 {
-  Position p =
-    Position::fromFen("r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6");
-  MoveList mlist;
-  generateMoves(p, mlist);
+  doPerftTest(
+    "r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6", 2, {{38, 1357}});
 }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")

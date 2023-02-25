@@ -62,13 +62,12 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
         p.revokeCastlingRights(EnemyCastleShort);
       }
     }
-    p.history().push({.mPiece = p.piece(to)});
+    p.pushCapture(p.piece(to));
   }
   switch (mtype) {
   case MV_KNG:
     p.incrementHalfMoveCount();
     p.revokeCastlingRights(CastleShort | CastleLong);
-    p.history().push({.mPiece = p.piece(to)});
     p.move(from, to);
     break;
   case MV_ROK:
@@ -79,7 +78,6 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
     else if (from == QenSideRookPos) {
       p.revokeCastlingRights(CastleLong);
     }
-    p.history().push({.mPiece = p.piece(to)});
     p.move(from, to);
     break;
   case PUSH:
@@ -112,22 +110,18 @@ void commitMv(Position& p, MoveType mtype, int from, int to)
     break;
   case PRC_HRS:
     p.resetHalfMoveCount();
-    p.history().push({.mPiece = p.piece(to)});
     p.remove(from).put(to, Player | HRS);
     break;
   case PRC_BSH:
     p.resetHalfMoveCount();
-    p.history().push({.mPiece = p.piece(to)});
     p.remove(from).put(to, Player | BSH);
     break;
   case PRC_ROK:
     p.resetHalfMoveCount();
-    p.history().push({.mPiece = p.piece(to)});
     p.remove(from).put(to, Player | ROK);
     break;
   case PRC_QEN:
     p.resetHalfMoveCount();
-    p.history().push({.mPiece = p.piece(to)});
     p.remove(from).put(to, Player | QEN);
     break;
   case CASTLE_SHORT:
@@ -188,17 +182,14 @@ void revertMv(Position& p, MoveType mtype, int from, int to)
     break;
   }
   if (mtype & CAPTURE) {
-    p.put(to, p.history().pop().mPiece);
+    p.put(to, p.popCapture());
   }
 }
 
 void Move::commit(Position& p) const
 {
-  p.history().push({.mEnpassantSq = p.enpassantSq()});
+  p.pushState();
   p.unsetEnpassantSq();
-  p.history().push({.mCastlingRights = p.castlingRights()});
-  p.history().push({.mCounter = p.moveCount()});
-  p.history().push({.mCounter = p.halfMoveCount()});
   if (p.turn() == WHT) {
     commitMv<WHT>(p, mType, from(), to());
   }
@@ -218,67 +209,34 @@ void Move::revert(Position& p) const
   else if (p.turn() == BLK) {
     revertMv<BLK>(p, mType, from(), to());
   }
-  std::cout << p << std::endl;
-  p.setHalfMoveCount(p.history().pop().mCounter);
-  p.setMoveCount(p.history().pop().mCounter);
-  p.setCastlingRights(p.history().pop().mCastlingRights);
-  p.setEnpassantSq(p.history().pop().mEnpassantSq);
+  p.popState();
 }
 
-MoveList::MoveList()
-    : mBuf()
-    , mEnd(mBuf.data())
-{}
-
-MoveList::MoveList(const MoveList& other)
-    : mBuf(other.mBuf)
-    , mEnd(mBuf.data() + other.size())
-{}
-
-MoveList::MoveList(MoveList&& other)
-    : mBuf(other.mBuf)
-    , mEnd(mBuf.data() + other.size())
+std::string Move::algebraic() const
 {
-  other.clear();
-}
-
-const MoveList& MoveList::operator=(const MoveList& other)
-{
-  mBuf = other.mBuf;
-  mEnd = mBuf.data() + other.size();
-  return *this;
-}
-const MoveList& MoveList::operator=(MoveList&& other)
-{
-  mBuf = other.mBuf;
-  mEnd = mBuf.data() + other.size();
-  other.clear();
-  return *this;
-}
-
-const Move* MoveList::begin() const
-{
-  return mBuf.data();
-}
-
-const Move* MoveList::end() const
-{
-  return mEnd;
-}
-
-size_t MoveList::size() const
-{
-  return size_t(mEnd - mBuf.data());
-}
-
-void MoveList::clear()
-{
-  mEnd = mBuf.data();
-}
-
-const Move& MoveList::operator[](size_t i) const
-{
-  return mBuf[i];
+  std::string out = std::string(SquareCoord[from()]);
+  out += SquareCoord[to()];
+  switch (type()) {
+  case PRM_HRS:
+  case PRC_HRS:
+    out.push_back('n');
+    break;
+  case PRM_BSH:
+  case PRC_BSH:
+    out.push_back('b');
+    break;
+  case PRM_ROK:
+  case PRC_ROK:
+    out.push_back('r');
+    break;
+  case PRM_QEN:
+  case PRC_QEN:
+    out.push_back('q');
+    break;
+  default:  // Do nothing.
+    break;
+  }
+  return out;
 }
 
 void MoveList::append(MoveType type, int from, int to, bool isCapture)
@@ -853,27 +811,7 @@ static constexpr auto coord = SquareCoord;
 
 std::ostream& operator<<(std::ostream& os, const Move& m)
 {
-  os << SquareCoord[m.from()] << SquareCoord[m.to()];
-  switch (m.type()) {
-  case PRM_HRS:
-  case PRC_HRS:
-    os << 'n';
-    break;
-  case PRM_BSH:
-  case PRC_BSH:
-    os << 'b';
-    break;
-  case PRM_ROK:
-  case PRC_ROK:
-    os << 'r';
-    break;
-  case PRM_QEN:
-  case PRC_QEN:
-    os << 'q';
-    break;
-  default:  // Do nothing.
-    break;
-  }
+  os << m.algebraic();
   return os;
 }
 

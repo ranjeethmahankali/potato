@@ -17,9 +17,9 @@ static void push(const MoveList&                      mlist,
   }
 }
 
-static void doPerftTest(const std::string&      fenstr,
-                        size_t                  depth,
-                        std::span<const size_t> expected)
+void doPerftTest(const std::string&      fenstr,
+                 size_t                  depth,
+                 std::span<const size_t> expected)
 {
   REQUIRE(expected.size() == depth);
   std::vector<size_t>                 actual(depth, 0);
@@ -34,7 +34,6 @@ static void doPerftTest(const std::string&      fenstr,
       auto mvd = moves.top();
       moves.pop();
       while (mvd.second <= current.size()) {
-        std::cout << p << std::endl << current.top() << std::endl;
         current.top().revert(p);
         current.pop();
         positions.pop();
