@@ -429,11 +429,13 @@ void generateEnpassant(const Position& p,
     int  from    = lsb(pmoves);
     int  to      = p.enpassantSq();
     int  target  = (from / 8) * 8 + to % 8;
-    auto sliders = getBoard<Enemy, ROK, QEN>(p) & EnpassantRank;
-    auto mask    = all & ~(OneHot[from] | OneHot[target]);
+    auto sliders = getBoard<Enemy, ROK, QEN>(p) & EnpassantRank & Rank[kingPos];
     bool safe    = true;
     while (sliders) {
-      if (OneHot[kingPos] & rookMoves(pop(sliders), mask)) {
+      int spos = pop(sliders);
+      if ((Between[kingPos][spos] & all) == (OneHot[target] | OneHot[from])) {
+        // This means the attacking pawn and the attacked pawn are the only pieces
+        // blocking a check. So enpassant is illegal.
         safe = false;
         break;
       }
