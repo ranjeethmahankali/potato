@@ -4,56 +4,201 @@
 
 namespace potato {
 
-const Move::VariantType& Move::value() const
+Move::Move(MoveType type, int from, int to)
+    : mType(type)
+    , mFrom(uint8_t(from))
+    , mTo(uint8_t(to))
+{}
+
+void Move::assign(MoveType type, int from, int to)
 {
-  return mVar;
+  mType = type;
+  mFrom = uint8_t(from);
+  mTo   = uint8_t(to);
 }
 
-void MvPiece::commit(Position& p) const
+MoveType Move::type() const
 {
-  Piece pc  = p.piece(mFrom);
-  Piece old = p.piece(mTo);
-  if (old != Piece::NONE || type(pc) == PWN) {
-    // Captures and pawn pushes reset the halfmove counter.
+  return mType;
+}
+
+int Move::from() const
+{
+  return int(mFrom);
+}
+
+int Move::to() const
+{
+  return int(mTo);
+}
+
+template<Color Player>
+void commitMv(Position& p, MoveType mtype, int from, int to)
+{
+  static constexpr Color     Enemy          = Player == WHT ? BLK : WHT;
+  static constexpr int       KngSideRookPos = Player == WHT ? 63 : Player == BLK ? 7 : -1;
+  static constexpr int       QenSideRookPos = Player == WHT ? 56 : Player == BLK ? 0 : -1;
+  static constexpr Castle    CastleShort    = Player == WHT   ? W_SHORT
+                                              : Player == BLK ? B_SHORT
+                                                              : Castle(0);
+  static constexpr Castle    CastleLong     = Player == WHT   ? W_LONG
+                                              : Player == BLK ? B_LONG
+                                                              : Castle(0);
+  static constexpr Castle    EnemyCastleShort = Player == WHT   ? B_SHORT
+                                                : Player == BLK ? W_SHORT
+                                                                : Castle(0);
+  static constexpr Castle    EnemyCastleLong  = Player == WHT   ? B_LONG
+                                                : Player == BLK ? W_LONG
+                                                                : Castle(0);
+  static constexpr Direction Up               = RelativeDir<N, Player>;
+  static constexpr int       HomeRank         = RelativeRank<Player, 0>;
+  static constexpr int       EnemyHomeRank    = RelativeRank<Player, 7>;
+  bool                       isCapture        = mtype & CAPTURE;
+  mtype                                       = MoveType(mtype & ~CAPTURE);
+  if (isCapture) {
+    if (p.piece(to) == (Enemy | ROK)) {
+      if (to == EnemyHomeRank * 8) {
+        p.revokeCastlingRights(EnemyCastleLong);
+      }
+      else if (to == EnemyHomeRank * 8 + 7) {
+        p.revokeCastlingRights(EnemyCastleShort);
+      }
+    }
+    p.pushCapture(p.piece(to));
+  }
+  switch (mtype) {
+  case MV_KNG:
+    p.incrementHalfMoveCount();
+    p.revokeCastlingRights(CastleShort | CastleLong);
+    p.move(from, to);
+    break;
+  case MV_ROK:
+    p.incrementHalfMoveCount();
+    if (from == KngSideRookPos) {
+      p.revokeCastlingRights(CastleShort);
+    }
+    else if (from == QenSideRookPos) {
+      p.revokeCastlingRights(CastleLong);
+    }
+    p.move(from, to);
+    break;
+  case PUSH:
+    p.resetHalfMoveCount();
+    p.move(from, to);
+    break;
+  case DBL_PUSH:
+    p.resetHalfMoveCount();
+    p.move(from, to).setEnpassantSq(to - Up);
+    break;
+  case ENPASSANT:
+    p.resetHalfMoveCount();
+    p.move(from, to).remove((from / 8) * 8 + to % 8);
+    break;
+  case PRM_HRS:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | HRS);
+    break;
+  case PRM_BSH:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | BSH);
+    break;
+  case PRM_ROK:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | ROK);
+    break;
+  case PRM_QEN:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | QEN);
+    break;
+  case PRC_HRS:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | HRS);
+    break;
+  case PRC_BSH:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | BSH);
+    break;
+  case PRC_ROK:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | ROK);
+    break;
+  case PRC_QEN:
+    p.resetHalfMoveCount();
+    p.remove(from).put(to, Player | QEN);
+    break;
+  case CASTLE_SHORT:
+    p.revokeCastlingRights(CastleShort | CastleLong);
+    p.move(HomeRank * 8 + 4, HomeRank * 8 + 6).move(HomeRank * 8 + 7, HomeRank * 8 + 5);
+    break;
+  case CASTLE_LONG:
+    p.revokeCastlingRights(CastleShort | CastleLong);
+    p.move(HomeRank * 8 + 4, HomeRank * 8 + 2).move(HomeRank * 8 + 0, HomeRank * 8 + 3);
+    break;
+  case OTHER:
+  default:  // Intentional fallthrough
+    p.incrementHalfMoveCount();
+    p.move(from, to);
+    break;
+  }
+  if (isCapture) {
     p.resetHalfMoveCount();
   }
-  if ((pc == W_ROK && mFrom == 56) || (old == W_ROK && mTo == 56)) {
-    p.revokeCastlingRights(W_LONG);
-  }
-  else if ((pc == W_ROK && mFrom == 63) || (old == W_ROK && mTo == 63)) {
-    p.revokeCastlingRights(W_SHORT);
-  }
-  else if ((pc == B_ROK && mFrom == 0) || (old == B_ROK && mTo == 0)) {
-    p.revokeCastlingRights(B_LONG);
-  }
-  else if ((pc == B_ROK && mFrom == 7) || (old == B_ROK && mTo == 7)) {
-    p.revokeCastlingRights(B_SHORT);
-  }
-  else if (pc == W_KNG) {
-    p.revokeCastlingRights(Castle(W_LONG | W_SHORT));
-  }
-  else if (pc == B_KNG) {
-    p.revokeCastlingRights(Castle(B_LONG | B_SHORT));
-  }
-  p.history().push({.mPiece = old});
-  p.move(mFrom, mTo);
 }
 
-void MvPiece::revert(Position& p) const
+template<Color Player>
+void revertMv(Position& p, MoveType mtype, int from, int to)
 {
-  p.move(mTo, mFrom).put(mTo, p.history().pop().mPiece);
+  static constexpr Color Enemy     = Player == WHT ? BLK : WHT;
+  static constexpr int   HomeRank  = RelativeRank<Player, 0>;
+  bool                   isCapture = mtype & CAPTURE;
+  mtype                            = MoveType(mtype & ~CAPTURE);
+  switch (mtype) {
+  case MV_KNG:
+  case MV_ROK:
+  case PUSH:
+  case DBL_PUSH:
+    p.move(to, from);
+    break;
+  case ENPASSANT:
+    p.move(to, from).put((from / 8) * 8 + to % 8, Enemy | PWN);
+    break;
+  case PRM_HRS:  // Intentional fall through
+  case PRM_BSH:  // Intentional fall through
+  case PRM_ROK:  // Intentional fall through
+  case PRM_QEN:
+    p.remove(to).put(from, Player | PWN);
+    break;
+  case PRC_HRS:  // Intentional fall through
+  case PRC_BSH:  // Intentional fall through
+  case PRC_ROK:  // Intentional fall through
+  case PRC_QEN:
+    p.remove(to).put(from, Player | PWN);
+    break;
+  case CASTLE_SHORT:
+    p.move(HomeRank * 8 + 6, HomeRank * 8 + 4).move(HomeRank * 8 + 5, HomeRank * 8 + 7);
+    break;
+  case CASTLE_LONG:
+    p.move(HomeRank * 8 + 2, HomeRank * 8 + 4).move(HomeRank * 8 + 3, HomeRank * 8 + 0);
+    break;
+  case OTHER:  // Intentional fall through
+  default:
+    p.move(to, from);
+    break;
+  }
+  if (isCapture) {
+    p.put(to, p.popCapture());
+  }
 }
 
 void Move::commit(Position& p) const
 {
-  p.history().push({.mEnpassantSquare = p.enpassantSq()});
-  p.setEnpassantSq(-1);
-  p.history().push({.mCastlingRights = p.castlingRights()});
-  p.history().push({.mCounter = p.moveCount()});
-  p.history().push({.mCounter = p.halfMoveCount()});
-  p.incrementHalfMoveCount();
-  std::visit([&p](auto& mv) { mv.commit(p); }, mVar);
-  if (p.turn() == BLK) {
+  p.pushState();
+  p.unsetEnpassantSq();
+  if (p.turn() == WHT) {
+    commitMv<WHT>(p, mType, from(), to());
+  }
+  else if (p.turn() == BLK) {
+    commitMv<BLK>(p, mType, from(), to());
     p.incrementMoveCounter();
   }
   p.switchTurn();
@@ -61,68 +206,49 @@ void Move::commit(Position& p) const
 
 void Move::revert(Position& p) const
 {
-  std::visit([&p](auto& mv) { mv.revert(p); }, mVar);
-  p.setHalfMoveCount(p.history().pop().mCounter);
-  p.setMoveCount(p.history().pop().mCounter);
-  p.setCastlingRights(p.history().pop().mCastlingRights);
-  p.setEnpassantSq(p.history().pop().mEnpassantSquare);
   p.switchTurn();
+  if (p.turn() == WHT) {
+    revertMv<WHT>(p, mType, from(), to());
+  }
+  else if (p.turn() == BLK) {
+    revertMv<BLK>(p, mType, from(), to());
+  }
+  p.popState();
 }
 
-MoveList::MoveList()
-    : mBuf()
-    , mEnd(mBuf.data())
-{}
-
-MoveList::MoveList(const MoveList& other)
-    : mBuf(other.mBuf)
-    , mEnd(mBuf.data() + other.size())
-{}
-
-MoveList::MoveList(MoveList&& other)
-    : mBuf(other.mBuf)
-    , mEnd(mBuf.data() + other.size())
+std::string Move::algebraic() const
 {
-  other.clear();
+  std::string out = std::string(SquareCoord[from()]);
+  out += SquareCoord[to()];
+  switch (type() & ~CAPTURE) {
+  case PRM_HRS:
+  case PRC_HRS:
+    out.push_back('n');
+    break;
+  case PRM_BSH:
+  case PRC_BSH:
+    out.push_back('b');
+    break;
+  case PRM_ROK:
+  case PRC_ROK:
+    out.push_back('r');
+    break;
+  case PRM_QEN:
+  case PRC_QEN:
+    out.push_back('q');
+    break;
+  default:  // Do nothing.
+    break;
+  }
+  return out;
 }
 
-const MoveList& MoveList::operator=(const MoveList& other)
+void MoveList::append(MoveType type, int from, int to, bool isCapture)
 {
-  mBuf = other.mBuf;
-  mEnd = mBuf.data() + other.size();
-  return *this;
-}
-const MoveList& MoveList::operator=(MoveList&& other)
-{
-  mBuf = other.mBuf;
-  mEnd = mBuf.data() + other.size();
-  other.clear();
-  return *this;
-}
-
-const Move* MoveList::begin() const
-{
-  return mBuf.data();
-}
-
-const Move* MoveList::end() const
-{
-  return mEnd;
-}
-
-size_t MoveList::size() const
-{
-  return size_t(mEnd - mBuf.data());
-}
-
-void MoveList::clear()
-{
-  mEnd = mBuf.data();
-}
-
-const Move& MoveList::operator[](size_t i) const
-{
-  return mBuf[i];
+  if (isCapture) {
+    type = type | CAPTURE;
+  }
+  (mEnd++)->assign(type, from, to);
 }
 
 int pop(BitBoard& b)
@@ -137,13 +263,25 @@ int lsb(BitBoard b)
   return std::countr_zero(b);
 }
 
+static constexpr std::array<uint64_t, (1 << 16)> reversed16()
+{
+  std::array<uint64_t, (1 << 16)> out;
+  for (size_t i = 0; i < out.size(); ++i) {
+    uint16_t v = uint16_t(i);
+    v      = ((v >> 1) & 0x55555555) | ((v & 0x55555555) << 1);  // swap even and odd bits
+    v      = ((v >> 2) & 0x33333333) | ((v & 0x33333333) << 2);  // swap consecutive pairs
+    v      = ((v >> 4) & 0x0F0F0F0F) | ((v & 0x0F0F0F0F) << 4);  // swap nibbles
+    v      = ((v >> 8) & 0x00FF00FF) | ((v & 0x00FF00FF) << 8);  // swap bytes
+    out[i] = uint64_t(v);
+  }
+  return out;
+}
+
 BitBoard reversed(BitBoard b)
 {
-  b = (b & 0x5555555555555555) << 1 | (b >> 1) & 0x5555555555555555;
-  b = (b & 0x3333333333333333) << 2 | (b >> 2) & 0x3333333333333333;
-  b = (b & 0x0f0f0f0f0f0f0f0f) << 4 | (b >> 4) & 0x0f0f0f0f0f0f0f0f;
-  b = (b & 0x00ff00ff00ff00ff) << 8 | (b >> 8) & 0x00ff00ff00ff00ff;
-  return (b << 48) | ((b & 0xffff0000) << 16) | ((b >> 16) & 0xffff0000) | (b >> 48);
+  static constexpr std::array<uint64_t, (1 << 16)> sReversed16 = reversed16();
+  return (sReversed16[0xffff & b] << 48) | (sReversed16[0xffff & (b >> 16)] << 32) |
+         (sReversed16[0xffff & (b >> 32)] << 16) | (sReversed16[0xffff & (b >> 48)]);
 }
 
 BitBoard sliderMoves(int sq, BitBoard blockers, BitBoard mask)
@@ -234,7 +372,7 @@ void generatePawnCaptures(const Position& p,
   }
   while (pmoves) {
     int pos = pop(pmoves);
-    moves += MvPiece {pos - RelativeDir<Dir, Player>, pos};
+    moves.append(CAPTURE | OTHER, pos - RelativeDir<Dir, Player>, pos);
   }
   // pinned.
   pmoves = shift<RelativeDir<Dir, Player>>(pcs & pinned) & enemy;
@@ -245,7 +383,7 @@ void generatePawnCaptures(const Position& p,
     int pto   = pop(pmoves);
     int pfrom = pto - RelativeDir<Dir, Player>;
     if (LineMask[pfrom][kingPos] & OneHot[pto]) {
-      moves += MvPiece {pfrom, pto};
+      moves.append(CAPTURE | OTHER, pfrom, pto);
     }
   }
 }
@@ -273,10 +411,10 @@ void generatePawnCapturePromotions(const Position& p,
   while (pmoves) {
     int to   = pop(pmoves);
     int from = to - RelativeDir<Dir, Player>;
-    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(QEN)};
-    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(ROK)};
-    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(BSH)};
-    moves += MvCapturePromote<Player> {from, to, makePiece<Player>(HRS)};
+    moves.append(CAPTURE | PRC_HRS, from, to);
+    moves.append(CAPTURE | PRC_BSH, from, to);
+    moves.append(CAPTURE | PRC_ROK, from, to);
+    moves.append(CAPTURE | PRC_QEN, from, to);
   }
 }
 
@@ -290,7 +428,7 @@ void generateEnpassant(const Position& p,
   static constexpr Color    Enemy         = Player == BLK ? WHT : BLK;
   static constexpr BitBoard EnpassantRank = Rank[RelativeRank<Player, 4> * 8];
   if (p.enpassantSq() == -1 ||
-      p.piece(p.enpassantSq() + RelativeDir<S, Player>) != makePiece<Enemy>(PWN)) {
+      p.piece(p.enpassantSq() + RelativeDir<S, Player>) != (Enemy | PWN)) {
     return;
   }
   auto pmoves = shift<RelativeDir<S, Player>>(
@@ -300,18 +438,22 @@ void generateEnpassant(const Position& p,
     pmoves &= LineMask[p.enpassantSq()][kingPos];
   }
   if (pmoves) {
-    auto mv      = MvEnpassant<Player> {lsb(pmoves), Dir};
-    auto sliders = getBoard<Enemy, ROK, QEN>(p) & EnpassantRank;
-    auto mask    = all & ~(OneHot[mv.mFrom] | OneHot[mv.target()]);
+    int  from    = lsb(pmoves);
+    int  to      = p.enpassantSq();
+    int  target  = (from / 8) * 8 + to % 8;
+    auto sliders = getBoard<Enemy, ROK, QEN>(p) & EnpassantRank & Rank[kingPos];
     bool safe    = true;
     while (sliders) {
-      if (OneHot[kingPos] & rookMoves(pop(sliders), mask)) {
+      int spos = pop(sliders);
+      if ((Between[kingPos][spos] & all) == (OneHot[target] | OneHot[from])) {
+        // This means the attacking pawn and the attacked pawn are the only pieces
+        // blocking a check. So enpassant is illegal.
         safe = false;
         break;
       }
     }
     if (safe) {
-      moves += mv;
+      moves.append(ENPASSANT, from, to);
     }
   }
 }
@@ -354,10 +496,10 @@ void generatePawnPushMoves(const Position& p,
   while (pmoves) {
     int pos = pop(pmoves);
     if constexpr (Steps == 1) {
-      moves += MvPiece {pos - Steps * Up, pos};
+      moves.append(PUSH, pos - Steps * Up, pos);
     }
     else {
-      moves += MvDoublePush<Player> {pos - Steps * Up};
+      moves.append(DBL_PUSH, pos - Steps * Up, pos);
     }
   }
 }
@@ -378,11 +520,12 @@ void generatePawnPromotionMoves(const Position& p,
     pmoves &= mask;
   }
   while (pmoves) {
-    uint8_t file = uint8_t(pop(pmoves) % 8);
-    moves += MvPromote<Player> {file, makePiece<Player>(QEN)};
-    moves += MvPromote<Player> {file, makePiece<Player>(ROK)};
-    moves += MvPromote<Player> {file, makePiece<Player>(BSH)};
-    moves += MvPromote<Player> {file, makePiece<Player>(HRS)};
+    int to   = pop(pmoves);
+    int from = to - Up;
+    moves.append(PRM_HRS, from, to);
+    moves.append(PRM_BSH, from, to);
+    moves.append(PRM_ROK, from, to);
+    moves.append(PRM_QEN, from, to);
   }
 }
 
@@ -406,7 +549,35 @@ void generateDiagSlides(const Position& p,
       pmoves &= LineMask[kingPos][pos];
     }
     while (pmoves) {
-      moves += MvPiece {pos, pop(pmoves)};
+      int dst = pop(pmoves);
+      moves.append(OTHER, pos, dst, p.piece(dst));
+    }
+  }
+}
+
+template<Color Player, PieceType PType>
+void generateOrthoSlidesHelper(const Position& p,
+                               MoveList&       moves,
+                               BitBoard        pinned,
+                               BitBoard        all,
+                               BitBoard        notself,
+                               BitBoard        mask,
+                               int             kingPos,
+                               MoveType        mtype)
+{
+  auto sliders = getBoard<Player, PType>(p);
+  while (sliders) {
+    int  pos    = pop(sliders);
+    auto pmoves = rookMoves(pos, all) & notself;
+    if (mask) {
+      pmoves &= mask;
+    }
+    if (OneHot[pos] & pinned) {
+      pmoves &= LineMask[kingPos][pos];
+    }
+    while (pmoves) {
+      int dst = pop(pmoves);
+      moves.append(mtype, pos, dst, p.piece(dst));
     }
   }
 }
@@ -420,20 +591,10 @@ void generateOrthoSlides(const Position& p,
                          BitBoard        mask,
                          int             kingPos)
 {
-  auto sliders = getBoard<Player, ROK, QEN>(p);
-  while (sliders) {
-    int  pos    = pop(sliders);
-    auto pmoves = rookMoves(pos, all) & notself;
-    if (mask) {
-      pmoves &= mask;
-    }
-    if (OneHot[pos] & pinned) {
-      pmoves &= LineMask[kingPos][pos];
-    }
-    while (pmoves) {
-      moves += MvPiece {pos, pop(pmoves)};
-    }
-  }
+  generateOrthoSlidesHelper<Player, ROK>(
+    p, moves, pinned, all, notself, mask, kingPos, MV_ROK);
+  generateOrthoSlidesHelper<Player, QEN>(
+    p, moves, pinned, all, notself, mask, kingPos, OTHER);
 }
 
 template<Color Player>
@@ -472,7 +633,8 @@ void generateMoves(const Position& p, MoveList& moves)
     }
     auto kmoves = KingMoves[kingPos] & (~(unsafe | self));
     while (kmoves) {
-      moves += MvPiece {kingPos, pop(kmoves)};
+      int dst = pop(kmoves);
+      moves.append(MV_KNG, kingPos, dst, p.piece(dst));
     }
   }
   BitBoard pinned   = 0;
@@ -523,20 +685,20 @@ void generateMoves(const Position& p, MoveList& moves)
     generatePawnCapturePromotions<Player, NE>(p, moves, pinned, enemy, checkers, kingPos);
     // Enpassant captures.
     if (p.enpassantSq() == cpos + RelativeDir<N, Player> &&
-        p.piece(cpos) == makePiece<Enemy>(PWN)) {
+        p.piece(cpos) == (Enemy | PWN)) {
       auto attackers = shift<RelativeDir<E, Player>>(checkers) & getBoard<Player, PWN>(p);
       if (attackers & pinned) {
         attackers &= LineMask[p.enpassantSq()][kingPos];
       }
       while (attackers) {
-        moves += MvEnpassant<Player> {pop(attackers), W};
+        moves.append(ENPASSANT, pop(attackers), p.enpassantSq());
       }
       attackers = shift<RelativeDir<W, Player>>(checkers) & getBoard<Player, PWN>(p);
       if (attackers & pinned) {
         attackers &= LineMask[p.enpassantSq()][kingPos];
       }
       while (attackers) {
-        moves += MvEnpassant<Player> {pop(attackers), E};
+        moves.append(ENPASSANT, pop(attackers), p.enpassantSq());
       }
     }
     // Block with a pawn push
@@ -550,7 +712,8 @@ void generateMoves(const Position& p, MoveList& moves)
       int  hpos   = pop(attackers);
       auto hmoves = KnightMoves[hpos] & (checkers | line) & notself;
       while (hmoves) {
-        moves += MvPiece {hpos, pop(hmoves)};
+        int dst = pop(hmoves);
+        moves.append(OTHER, hpos, dst, p.piece(dst));
       }
     }
     generateDiagSlides<Player>(p, moves, pinned, all, notself, line, kingPos);
@@ -584,7 +747,8 @@ void generateMoves(const Position& p, MoveList& moves)
       int  pos    = pop(pcs);
       auto pmoves = KnightMoves[pos] & notself;
       while (pmoves) {
-        moves += MvPiece {pos, pop(pmoves)};
+        int dst = pop(pmoves);
+        moves.append(OTHER, pos, dst, p.piece(dst));
       }
     }
     // Sliders
@@ -605,11 +769,13 @@ void generateMoves(const Position& p, MoveList& moves)
     Castle rights = p.castlingRights();
     if ((rights & CastleLong) && !(CastleLongEmptyMask & all) &&
         !(CastleLongSafeMask & unsafe)) {
-      moves += MvCastleLong<Player> {};
+      moves.append(
+        CASTLE_LONG, RelativeRank<Player, 0> * 8 + 4, RelativeRank<Player, 0> * 8 + 2);
     }
     if ((rights & CastleShort) && !(CastleShortEmptyMask & all) &&
         !(CastleShortSafeMask & unsafe)) {
-      moves += MvCastleShort<Player> {};
+      moves.append(
+        CASTLE_SHORT, RelativeRank<Player, 0> * 8 + 4, RelativeRank<Player, 0> * 8 + 6);
     }
   }
 }
@@ -663,74 +829,9 @@ namespace std {
 using namespace potato;
 static constexpr auto coord = SquareCoord;
 
-std::ostream& operator<<(std::ostream& os, const MvPiece& m)
-{
-  os << coord[m.mFrom] << coord[m.mTo];
-  return os;
-};
-
-template<Color Player>
-std::ostream& operator<<(std::ostream& os, const MvEnpassant<Player>& m)
-{
-  os << coord[m.mFrom] << coord[m.dest()];
-  return os;
-};
-
-template<Color Player>
-std::ostream& operator<<(std::ostream& os, const MvDoublePush<Player>& m)
-{
-  os << coord[m.mFrom] << coord[m.dest()];
-  return os;
-};
-
-template<Color Player>
-std::ostream& operator<<(std::ostream& os, const MvPromote<Player>& m)
-{
-  os << coord[m.mFile + RelativeRank<Player, 6> * 8]
-     << coord[m.mFile + RelativeRank<Player, 7> * 8] << symbol(m.mPromoted);
-  return os;
-};
-
-template<Color Player>
-std::ostream& operator<<(std::ostream& os, const MvCapturePromote<Player>& m)
-{
-  os << coord[m.mFrom] << coord[m.mTo] << symbol(m.mPromoted);
-  return os;
-};
-
-template<Color Player>
-std::ostream& operator<<(std::ostream& os, const MvCastleShort<Player>& m)
-{
-  if constexpr (Player == WHT) {
-    os << "e1g1";
-  }
-  else if constexpr (Player == BLK) {
-    os << "e8g8";
-  }
-  else {
-    os << "O-O";
-  }
-  return os;
-};
-
-template<Color Player>
-std::ostream& operator<<(std::ostream& os, const MvCastleLong<Player>& m)
-{
-  if constexpr (Player == WHT) {
-    os << "e1c1";
-  }
-  else if constexpr (Player == BLK) {
-    os << "e8c8";
-  }
-  else {
-    os << "O-O";
-  }
-  return os;
-};
-
 std::ostream& operator<<(std::ostream& os, const Move& m)
 {
-  std::visit([&os](const auto& v) { os << v; }, m.value());
+  os << m.algebraic();
   return os;
 }
 

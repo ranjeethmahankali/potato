@@ -6,37 +6,22 @@
 
 namespace potato {
 
-bool HistoryData::operator==(const HistoryData& other) const
-{
-  return std::memcmp(this, &other, sizeof(HistoryData)) == 0;
-}
-bool HistoryData::operator!=(const HistoryData& other) const
-{
-  return !(*this == other);
-}
-
-HistoryData History::pop()
-{
-  HistoryData h = std::stack<HistoryData>::top();
-  std::stack<HistoryData>::pop();
-  return h;
-}
-
-Color color(Piece pc)
-{
-  return Color(pc & 0b1000);
-}
-
-PieceType type(Piece pc)
-{
-  return PieceType(pc & 0b111);
-}
-
 char symbol(Piece pc)
 {
   static constexpr std::array<char, NUniquePieces> sSymbols = {
     {'_', 'p', 'n', 'b', 'r', 'q', 'k', '_', '_', 'P', 'N', 'B', 'R', 'Q', 'K'}};
   return sSymbols[pc];
+}
+
+bool Position::State::operator==(const State& s) const
+{
+  return mEnPassantSquare == s.mEnPassantSquare && mCastlingRights == s.mCastlingRights &&
+         mHalfMoveCount == s.mHalfMoveCount && mMoveCount == s.mMoveCount;
+}
+
+bool Position::State::operator!=(const State& s) const
+{
+  return !(*this == s);
 }
 
 Position::Position()
@@ -158,26 +143,32 @@ BitBoard Position::board(Piece p) const
 
 int Position::enpassantSq() const
 {
-  return mEnPassantSquare;
+  return mState.back().mEnPassantSquare;
 }
 
 Castle Position::castlingRights() const
 {
-  return mCastlingRights;
+  return mState.back().mCastlingRights;
 }
 
 void Position::setEnpassantSq(int enp)
 {
-  mEnPassantSquare = enp;
+  mState.back().mEnPassantSquare = enp;
 }
+
+void Position::unsetEnpassantSq()
+{
+  mState.back().mEnPassantSquare = -1;
+}
+
 void Position::setCastlingRights(Castle c)
 {
-  mCastlingRights = c;
+  mState.back().mCastlingRights = c;
 }
 
 void Position::revokeCastlingRights(Castle c)
 {
-  mCastlingRights = Castle(mCastlingRights & ~c);
+  mState.back().mCastlingRights = Castle(mState.back().mCastlingRights & ~c);
 }
 
 Color Position::turn() const
@@ -200,10 +191,9 @@ void Position::clear()
   std::fill(mPieces.begin(), mPieces.end(), Piece::NONE);
   std::fill(mBitBoards.begin(), mBitBoards.end(), 0);
   mBitBoards[Piece::NONE] = 0xffffffffffffffff;  // All squares contain the NONE piece.
-  mHalfMoveCount          = 0;
-  mMoveCount              = 1;
-  mEnPassantSquare        = -1;
-  mTurn                   = Color::WHT;
+  mState.clear();
+  mState.push_back(State());
+  mTurn = Color::WHT;
   calcHash();
 }
 
@@ -215,10 +205,12 @@ size_t Position::hash() const
 bool Position::operator==(const Position& other) const
 {
   return mPieces == other.mPieces && mBitBoards == other.mBitBoards &&
-         mHistory == other.mHistory && mHash == other.mHash &&
-         mHalfMoveCount == other.mHalfMoveCount && mMoveCount == other.mMoveCount &&
-         mEnPassantSquare == other.mEnPassantSquare &&
-         mCastlingRights == other.mCastlingRights && mTurn == other.mTurn;
+         /*mState == other.mState &&*/ mHash == other.mHash &&
+         mState.back().mHalfMoveCount == other.mState.back().mHalfMoveCount &&
+         mState.back().mMoveCount == other.mState.back().mMoveCount &&
+         mState.back().mEnPassantSquare == other.mState.back().mEnPassantSquare &&
+         mState.back().mCastlingRights == other.mState.back().mCastlingRights &&
+         mTurn == other.mTurn;
 }
 
 bool Position::operator!=(const Position& other) const
@@ -391,7 +383,7 @@ static Color parseActiveColor(const SubMatch& rTurn)
   }
 }
 
-static void parseCastlingRights(const SubMatch& castling, Castle& rights)
+static Castle parseCastlingRights(const SubMatch& castling)
 {
   if (castling.length() > 4 || castling.length() < 1) {
     throw std::logic_error("Invalid castling rights field in the fen string.");
@@ -402,7 +394,7 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
     {'k', Castle::B_SHORT},
     {'q', Castle::B_LONG},
   }};
-  rights                                                                = Castle(0);
+  Castle                                                   rights       = Castle(0);
   for (auto it = castling.first; it != castling.second; ++it) {
     char c     = *it;
     auto match = std::find_if(sCastlingPos.begin(), sCastlingPos.end(), [c](auto tup) {
@@ -413,19 +405,19 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
     }
     rights = Castle(rights | std::get<1>(*match));
   }
+  return rights;
 }
 
-static void parseEnpassant(const SubMatch& enpassant, int& enp)
+static int8_t parseEnpassant(const SubMatch& enpassant)
 {
+  int enp = -1;
   if (enpassant.length() > 2 || enpassant.length() < 1) {
     throw std::logic_error("Invalid enpassant target square field in the fen string");
   }
-  if (enpassant == "-") {
-    enp = -1;
-  }
-  else {
+  if (enpassant != "-") {
     enp = fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1));
   }
+  return enp;
 }
 
 Position Position::fromFen(const std::string& fen)
@@ -446,11 +438,11 @@ Position Position::fromFen(const std::string& fen)
   Position board;
   board.clear();
   parsePlacement(results[1], board);
-  board.mTurn = parseActiveColor(results[2]);
-  parseCastlingRights(results[3], board.mCastlingRights);
-  parseEnpassant(results[4], board.mEnPassantSquare);
-  board.mHalfMoveCount = std::stoi(results[5]);
-  board.mMoveCount     = std::stoi(results[6]);
+  board.mTurn                          = parseActiveColor(results[2]);
+  board.mState.back().mCastlingRights  = parseCastlingRights(results[3]);
+  board.mState.back().mEnPassantSquare = parseEnpassant(results[4]);
+  board.mState.back().mHalfMoveCount   = std::stoi(results[5]);
+  board.mState.back().mMoveCount       = std::stoi(results[6]);
   return board;
 }
 
@@ -489,14 +481,14 @@ std::string Position::fen() const
     out += mTurn == BLK ? " b" : " w";
   }
   {  // Castling
-    if (!mCastlingRights) {
+    if (!mState.back().mCastlingRights) {
       out += " -";
     }
     else {
       static constexpr std::array<char, 4> sSymbols = {{'q', 'k', 'Q', 'K'}};
       out.push_back(' ');
       for (int i = 4; i > -1; --i) {
-        if (mCastlingRights & (1 << i)) {
+        if (mState.back().mCastlingRights & (1 << i)) {
           out.push_back(sSymbols[i]);
         }
       }
@@ -504,50 +496,70 @@ std::string Position::fen() const
   }
   {
     out.push_back(' ');
-    out += mEnPassantSquare == -1 ? "-" : SquareCoord[mEnPassantSquare];
+    out += mState.back().mEnPassantSquare == -1
+             ? "-"
+             : SquareCoord[mState.back().mEnPassantSquare];
   }
-  out += " " + std::to_string(mHalfMoveCount);
-  out += " " + std::to_string(mMoveCount);
+  out += " " + std::to_string(int(mState.back().mHalfMoveCount));
+  out += " " + std::to_string(int(mState.back().mMoveCount));
   return out;
-}
-
-History& Position::history()
-{
-  return mHistory;
 }
 
 void Position::incrementMoveCounter()
 {
-  ++mMoveCount;
+  ++(mState.back().mMoveCount);
 }
 
 void Position::incrementHalfMoveCount()
 {
-  ++mHalfMoveCount;
+  ++(mState.back().mHalfMoveCount);
 }
 
 void Position::resetHalfMoveCount()
 {
-  mHalfMoveCount = 0;
+  mState.back().mHalfMoveCount = 0;
 }
 
 void Position::setMoveCount(int c)
 {
-  mMoveCount = c;
+  mState.back().mMoveCount = c;
 }
 
 void Position::setHalfMoveCount(int c)
 {
-  mHalfMoveCount = c;
+  mState.back().mHalfMoveCount = c;
 }
 
 int Position::moveCount() const
 {
-  return mMoveCount;
+  return mState.back().mMoveCount;
 }
+
 int Position::halfMoveCount() const
 {
-  return mHalfMoveCount;
+  return int(mState.back().mHalfMoveCount);
+}
+
+void Position::pushState()
+{
+  mState.push_back(mState.back());
+}
+
+void Position::popState()
+{
+  mState.pop_back();
+}
+
+void Position::pushCapture(Piece p)
+{
+  mCaptured.push_back(p);
+}
+
+Piece Position::popCapture()
+{
+  Piece p = mCaptured.back();
+  mCaptured.pop_back();
+  return p;
 }
 
 bool Position::valid() const
@@ -634,6 +646,7 @@ ostream& operator<<(ostream& os, const Position& b)
   os << std::endl;
   os << "Turn: " << b.turn() << std::endl;
   os << "Castling rights: " << b.castlingRights() << std::endl;
+  os << "Halfmoves: " << b.halfMoveCount() << "; Moves: " << b.moveCount() << std::endl;
   return os;
 }
 

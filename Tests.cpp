@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include <Move.h>
+#include <Util.h>
 #include <algorithm>
 #include <bit>
 #include <catch.hpp>
@@ -9,27 +10,42 @@
 
 using namespace potato;
 
+void doPerftTest(const std::string&      fenstr,
+                 size_t                  depth,
+                 std::span<const size_t> expected);
+
+// TEST_CASE("Debugging", "[debug]")
+// {
+//   // doPerftTest("rnbqk2r/p1ppppbp/1p3np1/8/3P4/1P3N2/PBP1PPPP/RN1QKB1R w KQkq - 0 5",
+//   //             6,
+//   //             {{28, 753, 21943, 618608, 18819585, 550948819}});
+//   Position p =
+//     Position::fromFen("2rr2k1/3nqpbp/p2pp1p1/1P6/3BP3/1PN2P2/P3Q1PP/2RR2K1 b - - 0
+//     19");
+//   perft(p, 5);
+// }
+
 TEST_CASE("Fen Consistency", "[fen][consistency]")
 {
   SECTION("Case 1")
   {
     Position p =
       Position::fromFen("rnbqkbnr/1ppppppp/p7/P7/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 2");
-    Move(MvDoublePush<BLK> {B7}).commit(p);
+    Move(DBL_PUSH, B7, B5).commit(p);
     REQUIRE(p.fen() == "rnbqkbnr/2pppppp/p7/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
   }
   SECTION("Case 2")
   {
     Position p =
       Position::fromFen("rnbqkbnr/pppp1ppp/4p3/8/5P2/5N2/PPPPP1PP/RNBQKB1R b KQkq - 1 2");
-    Move(MvPiece {D8, H4}).commit(p);
+    Move(OTHER, D8, H4).commit(p);
     REQUIRE(p.fen() == "rnb1kbnr/pppp1ppp/4p3/8/5P1q/5N2/PPPPP1PP/RNBQKB1R w KQkq - 2 3");
   }
   SECTION("Case 3")
   {
     Position p = Position::fromFen(
       "r1bqk2r/ppp2ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 b kq - 3 7");
-    Move(MvPiece {E8, D7}).commit(p);
+    Move(MV_KNG, E8, D7).commit(p);
     REQUIRE(p.fen() ==
             "r1bq3r/pppk1ppp/2n5/1B1pp3/3Pn3/b1N2N2/PPP2PPP/R1BQ1RK1 w - - 4 8");
   }
@@ -37,17 +53,39 @@ TEST_CASE("Fen Consistency", "[fen][consistency]")
   {
     Position p = Position::fromFen(
       "r1bqk2r/ppppbp1p/8/3nB1p1/2B1P3/3P4/PPP2PPP/RN2K1NR w KQkq - 0 8");
-    Move(MvPiece {E5, H8}).commit(p);
+    Move(OTHER | CAPTURE, E5, H8).commit(p);
     REQUIRE(p.fen() == "r1bqk2B/ppppbp1p/8/3n2p1/2B1P3/3P4/PPP2PPP/RN2K1NR b KQq - 0 8");
   }
+  SECTION("Case 5")
+  {
+    Position p = Position::fromFen(
+      "r1bqkb1r/1pp2ppp/2n5/pB1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 w kq - 0 7");
+    Move(OTHER | CAPTURE, B5, C6).commit(p);
+    REQUIRE(p.fen() == "r1bqkb1r/1pp2ppp/2B5/p2pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 0 7");
+  }
+  SECTION("Case 6")
+  {
+    Position p = Position::fromFen(
+      "r1bqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 b kq - 1 6");
+    Move(MV_ROK, A8, B8).commit(p);
+    REQUIRE(p.fen() == "1rbqkb1r/ppp2ppp/2n5/1B1pp3/3Pn3/5N2/PPP2PPP/RNBQ1RK1 w k - 2 7");
+  }
+  SECTION("Case 7")
+  {
+    Position p =
+      Position::fromFen("1nq1n3/1P3b1p/p2p2kp/6P1/4pKp1/rP2r3/2N5/1B6 w - - 1 2");
+    Move(CAPTURE | PRC_BSH, B7, C8).commit(p);
+    REQUIRE(p.fen() == "1nB1n3/5b1p/p2p2kp/6P1/4pKp1/rP2r3/2N5/1B6 b - - 0 2");
+  }
+  SECTION("Case 8")
+  {
+    Position p = Position::fromFen(
+      "rnbqk2r/2ppppbp/1p3np1/p7/1P1P4/P4N2/1BP1PPPP/RN1QKB1R b KQkq - 0 6");
+    Move(CAPTURE | OTHER, A5, B4).commit(p);
+    REQUIRE(p.fen() ==
+            "rnbqk2r/2ppppbp/1p3np1/8/1p1P4/P4N2/1BP1PPPP/RN1QKB1R w KQkq - 0 7");
+  }
 }
-
-// TEST_CASE("Perft From Starting Position", "[perft][debug]")
-// {
-//   Position p = Position::fromFen("8/8/8/n5N1/P1b1K3/q7/1P4p1/B2k3Q b - - 1 3");
-//   std::cout << p << std::endl;
-//   perft(p, 1);
-// }
 
 TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
 {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Tables.h>
+#include <Util.h>
 #include <stdint.h>
 #include <array>
 #include <cstdint>
@@ -70,6 +71,16 @@ enum Piece : uint8_t
   NONE = 0,
 };
 
+constexpr inline Piece operator|(Color c, PieceType type)
+{
+  return Piece(uint8_t(c) | type);
+}
+
+constexpr inline Piece operator|(PieceType type, Color c)
+{
+  return Piece(uint8_t(c) | type);
+}
+
 static constexpr size_t NUniquePieces = 15;
 
 enum Castle : uint8_t
@@ -80,32 +91,42 @@ enum Castle : uint8_t
   W_SHORT = 8,
 };
 
-union HistoryData
+constexpr inline Castle operator|(Castle a, Castle b)
 {
-  Piece  mPiece;
-  int    mEnpassantSquare;
-  int    mCounter = 0;
-  Castle mCastlingRights;
+  return Castle(uint8_t(a) | b);
+}
 
-  bool operator==(const HistoryData& other) const;
-  bool operator!=(const HistoryData& other) const;
-};
-
-struct History : public std::stack<HistoryData>
+constexpr inline Castle operator&(Castle a, Castle b)
 {
-  HistoryData pop();
+  return Castle(uint8_t(a) & b);
+}
 
-private:
-  using std::stack<HistoryData>::top;
-};
+constexpr inline Color color(Piece pc)
+{
+  return Color(pc & 0b1000);
+}
 
-Color     color(Piece pc);
-PieceType type(Piece pc);
-char      symbol(Piece pc);
+constexpr inline PieceType type(Piece pc)
+{
+  return PieceType(pc & 0b111);
+}
+
+char symbol(Piece pc);
 
 class Position
 {
 public:
+  struct State
+  {
+    uint16_t mMoveCount       = 1;
+    uint8_t  mHalfMoveCount   = 0;
+    int8_t   mEnPassantSquare = -1;
+    Castle   mCastlingRights  = Castle(0b1111);
+
+    bool operator==(const State&) const;
+    bool operator!=(const State&) const;
+  };
+
   Position();
   Position&       put(int pos, Piece pc);
   Position&       put(glm::ivec2 pos, Piece pc);
@@ -119,6 +140,7 @@ public:
   BitBoard        board(Piece p) const;
   int             enpassantSq() const;
   void            setEnpassantSq(int enp);
+  void            unsetEnpassantSq();
   Castle          castlingRights() const;
   void            setCastlingRights(Castle c);
   void            revokeCastlingRights(Castle c);
@@ -129,7 +151,6 @@ public:
   size_t          hash() const;
   bool            valid() const;
   std::string     fen() const;
-  History&        history();
   void            incrementMoveCounter();
   void            incrementHalfMoveCount();
   void            resetHalfMoveCount();
@@ -137,24 +158,24 @@ public:
   void            setHalfMoveCount(int c);
   int             moveCount() const;
   int             halfMoveCount() const;
+  void            pushState();
+  void            popState();
+  void            pushCapture(Piece p);
+  Piece           popCapture();
   static Position empty();
   static Position fromFen(const std::string& fen);
-
-  bool operator==(const Position& other) const;
-  bool operator!=(const Position& other) const;
+  bool            operator==(const Position& other) const;
+  bool            operator!=(const Position& other) const;
 
 private:
   void calcHash();
 
   std::array<Piece, 64>               mPieces;
   std::array<BitBoard, NUniquePieces> mBitBoards;
-  History                             mHistory;
-  size_t                              mHash            = 0;
-  int                                 mHalfMoveCount   = 0;
-  int                                 mMoveCount       = 1;
-  int                                 mEnPassantSquare = -1;
-  Castle                              mCastlingRights  = Castle(0b1111);
-  Color                               mTurn            = Color::WHT;
+  StaticVector<State, 32>             mState;
+  StaticVector<Piece, 64>             mCaptured;
+  size_t                              mHash = 0;
+  Color                               mTurn = Color::WHT;
 };
 
 void      writeBoard(BitBoard b, std::ostream& os);
@@ -173,5 +194,7 @@ struct hash<potato::Position>
 };
 
 ostream& operator<<(ostream& os, const potato::Position& b);
+
+ostream& operator<<(ostream& os, potato::Castle rights);
 
 }  // namespace std

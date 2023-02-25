@@ -17,9 +17,9 @@ static void push(const MoveList&                      mlist,
   }
 }
 
-static void doPerftTest(const std::string&      fenstr,
-                        size_t                  depth,
-                        std::span<const size_t> expected)
+void doPerftTest(const std::string&      fenstr,
+                 size_t                  depth,
+                 std::span<const size_t> expected)
 {
   REQUIRE(expected.size() == depth);
   std::vector<size_t>                 actual(depth, 0);
