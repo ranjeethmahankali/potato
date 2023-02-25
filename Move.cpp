@@ -263,13 +263,25 @@ int lsb(BitBoard b)
   return std::countr_zero(b);
 }
 
+static constexpr std::array<uint64_t, (1 << 16)> reversed16()
+{
+  std::array<uint64_t, (1 << 16)> out;
+  for (size_t i = 0; i < out.size(); ++i) {
+    uint16_t v = uint16_t(i);
+    v      = ((v >> 1) & 0x55555555) | ((v & 0x55555555) << 1);  // swap even and odd bits
+    v      = ((v >> 2) & 0x33333333) | ((v & 0x33333333) << 2);  // swap consecutive pairs
+    v      = ((v >> 4) & 0x0F0F0F0F) | ((v & 0x0F0F0F0F) << 4);  // swap nibbles
+    v      = ((v >> 8) & 0x00FF00FF) | ((v & 0x00FF00FF) << 8);  // swap bytes
+    out[i] = uint64_t(v);
+  }
+  return out;
+}
+
 BitBoard reversed(BitBoard b)
 {
-  b = (b & 0x5555555555555555) << 1 | (b >> 1) & 0x5555555555555555;
-  b = (b & 0x3333333333333333) << 2 | (b >> 2) & 0x3333333333333333;
-  b = (b & 0x0f0f0f0f0f0f0f0f) << 4 | (b >> 4) & 0x0f0f0f0f0f0f0f0f;
-  b = (b & 0x00ff00ff00ff00ff) << 8 | (b >> 8) & 0x00ff00ff00ff00ff;
-  return (b << 48) | ((b & 0xffff0000) << 16) | ((b >> 16) & 0xffff0000) | (b >> 48);
+  static constexpr std::array<uint64_t, (1 << 16)> sReversed16 = reversed16();
+  return (sReversed16[0xffff & b] << 48) | (sReversed16[0xffff & (b >> 16)] << 32) |
+         (sReversed16[0xffff & (b >> 32)] << 16) | (sReversed16[0xffff & (b >> 48)]);
 }
 
 BitBoard sliderMoves(int sq, BitBoard blockers, BitBoard mask)

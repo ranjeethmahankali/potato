@@ -20,8 +20,9 @@ void doPerftTest(const std::string&      fenstr,
 //   //             6,
 //   //             {{28, 753, 21943, 618608, 18819585, 550948819}});
 //   Position p =
-//     Position::fromFen("6nK/p3P2P/pb2P2P/4P3/QpP1kB2/7r/1p1P1p2/3r3R b - c3 0 3");
-//   perft(p, 1);
+//     Position::fromFen("2rr2k1/3nqpbp/p2pp1p1/1P6/3BP3/1PN2P2/P3Q1PP/2RR2K1 b - - 0
+//     19");
+//   perft(p, 5);
 // }
 
 TEST_CASE("Fen Consistency", "[fen][consistency]")
