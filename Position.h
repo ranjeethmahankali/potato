@@ -118,10 +118,10 @@ class Position
 public:
   struct State
   {
-    int    mHalfMoveCount   = 0;
-    int    mMoveCount       = 1;
-    int    mEnPassantSquare = -1;
-    Castle mCastlingRights  = Castle(0b1111);
+    uint16_t mMoveCount       = 1;
+    uint8_t  mHalfMoveCount   = 0;
+    int8_t   mEnPassantSquare = -1;
+    Castle   mCastlingRights  = Castle(0b1111);
 
     bool operator==(const State&) const;
     bool operator!=(const State&) const;

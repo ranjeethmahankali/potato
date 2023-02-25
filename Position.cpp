@@ -383,7 +383,7 @@ static Color parseActiveColor(const SubMatch& rTurn)
   }
 }
 
-static void parseCastlingRights(const SubMatch& castling, Castle& rights)
+static Castle parseCastlingRights(const SubMatch& castling)
 {
   if (castling.length() > 4 || castling.length() < 1) {
     throw std::logic_error("Invalid castling rights field in the fen string.");
@@ -394,7 +394,7 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
     {'k', Castle::B_SHORT},
     {'q', Castle::B_LONG},
   }};
-  rights                                                                = Castle(0);
+  Castle                                                   rights       = Castle(0);
   for (auto it = castling.first; it != castling.second; ++it) {
     char c     = *it;
     auto match = std::find_if(sCastlingPos.begin(), sCastlingPos.end(), [c](auto tup) {
@@ -405,19 +405,19 @@ static void parseCastlingRights(const SubMatch& castling, Castle& rights)
     }
     rights = Castle(rights | std::get<1>(*match));
   }
+  return rights;
 }
 
-static void parseEnpassant(const SubMatch& enpassant, int& enp)
+static int8_t parseEnpassant(const SubMatch& enpassant)
 {
+  int enp = -1;
   if (enpassant.length() > 2 || enpassant.length() < 1) {
     throw std::logic_error("Invalid enpassant target square field in the fen string");
   }
-  if (enpassant == "-") {
-    enp = -1;
-  }
-  else {
+  if (enpassant != "-") {
     enp = fileToX(*enpassant.first) + 8 * rankToY(*(enpassant.first + 1));
   }
+  return enp;
 }
 
 Position Position::fromFen(const std::string& fen)
@@ -438,11 +438,11 @@ Position Position::fromFen(const std::string& fen)
   Position board;
   board.clear();
   parsePlacement(results[1], board);
-  board.mTurn = parseActiveColor(results[2]);
-  parseCastlingRights(results[3], board.mState.back().mCastlingRights);
-  parseEnpassant(results[4], board.mState.back().mEnPassantSquare);
-  board.mState.back().mHalfMoveCount = std::stoi(results[5]);
-  board.mState.back().mMoveCount     = std::stoi(results[6]);
+  board.mTurn                          = parseActiveColor(results[2]);
+  board.mState.back().mCastlingRights  = parseCastlingRights(results[3]);
+  board.mState.back().mEnPassantSquare = parseEnpassant(results[4]);
+  board.mState.back().mHalfMoveCount   = std::stoi(results[5]);
+  board.mState.back().mMoveCount       = std::stoi(results[6]);
   return board;
 }
 
@@ -500,8 +500,8 @@ std::string Position::fen() const
              ? "-"
              : SquareCoord[mState.back().mEnPassantSquare];
   }
-  out += " " + std::to_string(mState.back().mHalfMoveCount);
-  out += " " + std::to_string(mState.back().mMoveCount);
+  out += " " + std::to_string(int(mState.back().mHalfMoveCount));
+  out += " " + std::to_string(int(mState.back().mMoveCount));
   return out;
 }
 
@@ -534,9 +534,10 @@ int Position::moveCount() const
 {
   return mState.back().mMoveCount;
 }
+
 int Position::halfMoveCount() const
 {
-  return mState.back().mHalfMoveCount;
+  return int(mState.back().mHalfMoveCount);
 }
 
 void Position::pushState()
