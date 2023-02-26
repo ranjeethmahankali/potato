@@ -15,7 +15,7 @@
 
 namespace potato {
 
-static void doMove(const std::string& mv)
+void doMove(const std::string& mv)
 {
   using namespace std::chrono_literals;
   // Generate the set of legal moves.
@@ -60,7 +60,7 @@ static void doMove(const std::string& mv)
   if (success) {
     std::this_thread::sleep_for(1s);
     auto m = bestMove(currentPosition());
-    std::cout << "---> " << m << std::endl;
+    std::cout << " Me: " << m << std::endl;
     m.commit(currentPosition());
     view::update();
   }

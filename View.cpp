@@ -1,9 +1,11 @@
+#include <Command.h>
 #include <Position.h>
 #include <Util.h>
 #include <View.h>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
+#include <iostream>
 #include <memory>
 
 namespace potato {
@@ -374,6 +376,36 @@ static void glfw_error_cb(int error, const char* desc)
   gl::logger().error("GLFW Error {}: {}", error, desc);
 }
 
+static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
+{
+  static std::array<int, 2> sMove = {{-1, -1}};
+  if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    int& target = sMove[0] == -1 ? sMove[0] : sMove[1];
+    if (action == GLFW_PRESS) {
+      glm::dvec2 pos;
+      GL_CALL(glfwGetCursorPos(window, &pos.x, &pos.y));
+      glm::ivec2 ipos = glm::ivec2(glm::floor(pos / 128.0));
+      target          = ipos.y * 8 + ipos.x;
+    }
+    else if (action == GLFW_RELEASE) {
+      glm::dvec2 pos;
+      GL_CALL(glfwGetCursorPos(window, &pos.x, &pos.y));
+      glm::ivec2 ipos = glm::ivec2(glm::floor(pos / 128.0));
+      int        t2   = ipos.y * 8 + ipos.x;
+      if (t2 != target) {
+        target = -1;
+      }
+      if (sMove[0] != -1 && sMove[1] != -1) {
+        std::string mv = std::string(SquareCoord[sMove[0]]);
+        mv += SquareCoord[sMove[1]];
+        std::cout << "You: " << mv << std::endl;
+        doMove(mv);
+        sMove = {{-1, -1}};
+      }
+    }
+  }
+}
+
 int initGL()
 {
   glfwSetErrorCallback(glfw_error_cb);
@@ -394,6 +426,7 @@ int initGL()
   }
   glfwMakeContextCurrent(sWindow);
   glfwSwapInterval(0);
+  glfwSetMouseButtonCallback(sWindow, &onMouseButton);
   // OpenGL bindings
   if (glewInit() != GLEW_OK) {
     gl::logger().error("Failed to initialize OpenGL bindings.");

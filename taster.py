@@ -69,7 +69,7 @@ class Comparator:
 
     def perftPotato(self):
         """Do perft with potato and get sorted results."""
-        potato = subprocess.Popen(['Release/potato', '--cli'],
+        potato = subprocess.Popen(['Release/potato', '--cli', '--no-board'],
                                   stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)

@@ -8,8 +8,18 @@
 
 using namespace potato;
 
-static void gameLoop()
+static void play()
 {
+  view::start();
+  view::join();
+}
+
+static void cli(const bool showBoard = true)
+{
+  command::init();
+  if (showBoard) {
+    view::start();
+  }
   std::string input;
   bool        running = true;
   while (running && !view::closed()) {
@@ -23,31 +33,9 @@ static void gameLoop()
     }
     command::run(input);
   }
-}
-
-static void play()
-{
-  command::init();
-  view::start();
-  gameLoop();
-  view::stop();
-  view::join();
-}
-
-static void cli()
-{
-  command::init();
-  std::string input;
-  bool        running = true;
-  while (running) {
-    std::getline(std::cin, input);
-    if (input.empty())
-      continue;
-    if (input == "exit" || input == "quit") {
-      running = false;
-      continue;
-    }
-    command::run(input);
+  if (showBoard) {
+    view::stop();
+    view::join();
   }
 }
 
@@ -58,9 +46,18 @@ int main(int argc, char** argv)
     .help("Start in pure CLI mode instead of entering the game loop.")
     .implicit_value(true)
     .default_value(false);
+  parser.add_argument("--no-board")
+    .help("In CLI mode, don't show the board.")
+    .implicit_value(true)
+    .default_value(false);
   parser.parse_args(argc, argv);
   if (parser["--cli"] == true) {
-    cli();
+    if (parser["--no-board"] == true) {
+      cli(false);
+    }
+    else {
+      cli();
+    }
   }
   else {
     play();
