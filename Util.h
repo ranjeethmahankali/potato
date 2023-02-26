@@ -50,6 +50,8 @@ private:
 template<typename T, size_t N>
 struct StaticVector
 {
+  static constexpr size_t Size = N;
+
 protected:
   std::array<T, N> mBuf;
   T*               mEnd;
@@ -58,6 +60,15 @@ public:
   StaticVector()
       : mBuf()
       , mEnd(mBuf.data())
+  {}
+  StaticVector(size_t sz, const T& val)
+      : StaticVector()
+  {
+    std::fill_n(mBuf.begin(), sz, val);
+    mEnd += sz;
+  }
+  explicit StaticVector(size_t size)
+      : StaticVector(size, T())
   {}
   StaticVector(const StaticVector& other)
       : mBuf(other.mBuf)
@@ -82,8 +93,22 @@ public:
     other.clear();
     return *this;
   }
+  void resize(size_t sz, const T& val)
+  {
+    if (sz < size()) {
+      mEnd = mBuf.data() + sz;
+    }
+    else if (sz > size()) {
+      sz -= size();
+      std::fill_n(mEnd, sz, val);
+      mEnd += sz;
+    }
+  }
+  void     resize(size_t sz) { resize(sz, T()); }
   const T* begin() const { return mBuf.data(); }
   const T* end() const { return mEnd; }
+  T*       begin() { return mBuf.data(); }
+  T*       end() { return mEnd; }
   size_t   size() const { return size_t(std::distance(begin(), end())); }
   void     clear() { mEnd = mBuf.data(); }
   const T& operator[](size_t i) const { return mBuf[i]; }

@@ -15,18 +15,21 @@
 
 namespace potato {
 
-void doMove(const std::string& mv)
+static void doMove(const std::string& mv)
 {
+  using namespace std::chrono_literals;
   // Generate the set of legal moves.
   MoveList legal;
   generateMoves(currentPosition(), legal);
-  auto match = std::find_if(
+  bool success = false;
+  auto match   = std::find_if(
     legal.begin(), legal.end(), [&mv](const Move& m) { return m.algebraic() == mv; });
   if (match != legal.end()) {
     match->commit(currentPosition());
-    return;
+    view::update();
+    success = true;
   }
-  if (mv.size() == 4) {  // Check for promotions
+  else if (mv.size() == 4) {  // Check for promotions
     StaticVector<char, 4> candidates;
     for (const auto& m : legal) {
       std::string alg = m.algebraic();
@@ -49,11 +52,21 @@ void doMove(const std::string& mv)
       });
       if (match != legal.end()) {
         match->commit(currentPosition());
-        return;
+        view::update();
+        success = true;
       }
     }
   }
-  std::cout << "Not a legal move!\n";
+  if (success) {
+    std::this_thread::sleep_for(1s);
+    auto m = bestMove(currentPosition());
+    std::cout << "---> " << m << std::endl;
+    m.commit(currentPosition());
+    view::update();
+  }
+  else {
+    std::cout << "Not a legal move!\n";
+  }
 }
 
 namespace command {
@@ -101,7 +114,6 @@ void move(int argc, const char** argv)
   parser.add_argument("movestr").help("The move").required();
   parser.parse_args(argc, argv);
   doMove(parser.get<std::string>("movestr"));
-  view::update();
 }
 
 void loadFen(int argc, const char** argv)
@@ -129,6 +141,12 @@ void perft(int argc, const char** argv)
   potato::perft(currentPosition(), depth);
 }
 
+void show(int argc, const char** argv)
+{
+  std::cout << currentPosition() << std::endl
+            << "FEN: " << currentPosition().fen() << std::endl;
+}
+
 }  // namespace funcs
 
 void init()
@@ -136,6 +154,7 @@ void init()
   cmdFuncMap().emplace("move", funcs::move);
   cmdFuncMap().emplace("fen", funcs::loadFen);
   cmdFuncMap().emplace("perft", funcs::perft);
+  cmdFuncMap().emplace("show", funcs::show);
 }
 
 }  // namespace command

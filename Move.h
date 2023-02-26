@@ -122,6 +122,8 @@ BitBoard getAllBoards(const Position& p)
   return getBoard<Player, PWN, HRS, BSH, ROK, QEN, KNG>(p);
 }
 
+Move bestMove(Position& p);
+
 }  // namespace potato
 
 namespace std {
