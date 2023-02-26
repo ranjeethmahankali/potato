@@ -84,11 +84,15 @@ void Position::calcHash()
 
 Position& Position::put(int pos, Piece pc)
 {
+  static constexpr std::array<int, NUniquePieces> sMaterialValue = {
+    {0, -1, -3, -3, -5, -9, -100, 0, 0, 1, 3, 3, 5, 9, 100}};
+
   Piece    old  = std::exchange(mPieces[pos], pc);
   BitBoard mask = OneHot[pos];
   mBitBoards[old] &= ~mask;
   mBitBoards[pc] |= mask;
   mHash ^= zobristTable()[old * 64 + pos] ^ zobristTable()[pc * 64 + pos];
+  mMaterial += sMaterialValue[pc] - sMaterialValue[old];
   return *this;
 }
 
@@ -200,6 +204,11 @@ void Position::clear()
 size_t Position::hash() const
 {
   return mHash;
+}
+
+int Position::material() const
+{
+  return mMaterial;
 }
 
 bool Position::operator==(const Position& other) const

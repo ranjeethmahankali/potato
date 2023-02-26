@@ -106,7 +106,6 @@ TEST_CASE("Loading from FEN string", "[fen][parsing][generation]")
   REQUIRE(pfen.valid());
   REQUIRE(expected.valid());
   REQUIRE(pfen == expected);
-  std::cout << pfen.fen() << std::endl;
   REQUIRE(pfen.fen() == fenstr);
 }
 
@@ -226,5 +225,64 @@ TEST_CASE("Zobrist Hash Updates", "[zobrist][hash][incremental][update]")
     p.move({4, 2}, {2, 2});
     REQUIRE(p.valid());
     REQUIRE(h1 == p.hash());
+  }
+}
+
+TEST_CASE("Material count", "[material][value][incremental]")
+{
+  SECTION("Starting position")
+  {
+    Position p;
+    REQUIRE(p.material() == 0);
+    REQUIRE(p.valid());
+  }
+  SECTION("Pawn captures by white")
+  {
+    Position p = Position::fromFen(
+      "r1b2rk1/pp1nqppp/3bpn2/2p5/2BP4/2N1PN1P/PPQ2PP1/R1B2RK1 w - - 0 11");
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 0);
+    Move(OTHER | CAPTURE, D4, C5).commit(p);
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 1);
+    Move(OTHER | CAPTURE, D6, C5).commit(p);
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 0);
+  }
+  SECTION("Piece captures by white")
+  {
+    Position p = Position::fromFen(
+      "r1r3k1/1b1nqppp/p2bp3/1p2n3/3BP3/PBN2N1P/1P3PP1/1Q1RR1K1 w - - 10 31");
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 0);
+    Move(OTHER | CAPTURE, F3, E5).commit(p);
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 3);
+    Move(OTHER | CAPTURE, D7, E5).commit(p);
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 0);
+  }
+  SECTION("Pawn captures by black")
+  {
+    Position p =
+      Position::fromFen("r5k1/1b3ppp/p3p3/1pr5/4PP1q/PB1Q3P/1P1nN1P1/2R1R1K1 b - - 3 37");
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 0);
+    Move(OTHER | CAPTURE, D2, E4).commit(p);
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == -1);
+  }
+  SECTION("Uneven trades")
+  {
+    Position p =
+      Position::fromFen("5k1r/5p2/3pbb2/qp1B4/1Nr4p/P2RQ3/2P3PP/1K1R4 w - - 3 29");
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 0);
+    Move(OTHER | CAPTURE, D5, C4).commit(p);
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 5);
+    Move(OTHER | CAPTURE, B5, C4).commit(p);
+    REQUIRE(p.valid());
+    REQUIRE(p.material() == 2);
   }
 }
