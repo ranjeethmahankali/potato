@@ -95,6 +95,7 @@ public:
   const T& back() const { return *(mEnd - 1); }
   T&       back() { return *(mEnd - 1); }
   void     pop_back() { --mEnd; }
+  bool     empty() const { return size() == 0; }
 };
 
 }  // namespace potato

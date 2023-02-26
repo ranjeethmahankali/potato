@@ -87,6 +87,8 @@ struct Move
    * @return std::string
    */
   std::string algebraic() const;
+  bool        operator==(const Move&);
+  bool        operator!=(const Move&);
 
 private:
   MoveType mType = OTHER;

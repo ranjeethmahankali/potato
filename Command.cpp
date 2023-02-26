@@ -11,143 +11,50 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "Util.h"
 
 namespace potato {
 
-// bool doCastle(Position&                           b,
-//               const std::string&                  mv,
-//               const std::unordered_set<Position>& legal)
-// {
-//   static constexpr glm::ivec2 sKingPos   = {4, 7};
-//   static constexpr glm::ivec2 sRookShort = {7, 7};
-//   static constexpr glm::ivec2 sRookLong  = {0, 7};
-//   if (mv == "o-o") {  // Short castle.
-//     Position b2 = b;
-//     if (legal.find(b2.move(sKingPos, {6, 7}).move(sRookShort, {5, 7})) != legal.end())
-//     {
-//       b = b2;
-//       return true;
-//     }
-//   }
-//   else if (mv == "o-o-o") {
-//     Position b2 = b;
-//     if (legal.find(b2.move(sKingPos, {2, 7}).move(sRookLong, {3, 7})) != legal.end()) {
-//       b = b2;
-//       return true;
-//     }
-//   }
-//   return false;
-// }
-
-// static uint8_t charToPiece(char c)
-// {
-//   switch (c) {
-//   case 'p':
-//     return Piece::PWN;
-//   case 'n':
-//     return Piece::HRS;
-//   case 'b':
-//     return Piece::BSH;
-//   case 'r':
-//     return Piece::ROK;
-//   case 'q':
-//     return Piece::QEN;
-//   case 'k':
-//     return Piece::KNG;
-//   default:
-//     return Piece::NONE;
-//   }
-// }
-
-// bool doPromotion(Position&                           b,
-//                  const std::string&                  mv,
-//                  const std::unordered_set<Position>& legal)
-// {
-//   std::smatch results;
-//   if (std::regex_search(mv, results, std::regex("^([a-h])8=([n,b,r,q])$"))) {
-//     int      file  = fileToX(*(results[1].first));
-//     uint8_t  piece = charToPiece(*(results[2].first));
-//     Position b2    = b;
-//     if (legal.find(b2.move({file, 7}, {file, 8}).set({file, 8}, Piece::WHT | piece)) !=
-//         legal.end()) {
-//       b = b2;
-//       return true;
-//     }
-//   }
-//   else if (std::regex_search(mv, results,
-//   std::regex("^([a-h])x([a-h])8=([n,b,r,q])$"))) {
-//     int      file1 = fileToX(*(results[1].first));
-//     int      file2 = fileToX(*(results[2].first));
-//     uint8_t  piece = charToPiece(*(results[3].first));
-//     Position b2    = b;
-//     if (legal.find(b2.move({file1, 7}, {file2, 8}).set({file2, 8}, Piece::WHT | piece))
-//     !=
-//         legal.end()) {
-//       b = b2;
-//       return true;
-//     }
-//   }
-//   return false;
-// }
-
-// bool doMove(Position& b, std::string mv)
-// {
-//   static std::vector<Position>        sLegalVec;
-//   static std::unordered_set<Position> sLegalSet;
-//   // Generate the set of legal moves.
-//   sLegalVec.clear();
-//   b.genMoves(sLegalVec, Piece::WHT);
-//   sLegalSet.clear();
-//   std::copy(
-//     sLegalVec.begin(), sLegalVec.end(), std::inserter(sLegalSet, sLegalSet.end()));
-//   // Lower the case.
-//   for (auto& c : mv) {
-//     c = std::tolower(c);
-//   }
-//   // Parse move.
-//   if (doCastle(b, mv, sLegalSet)) {
-//     return true;
-//   }
-//   std::smatch results;
-//   if (std::regex_search(
-//         mv,
-//         results,
-//         std::regex("^([p,n,b,r,q,k]{0,1})([a-h,1-8]{0,1})(x{0,1})([a-h])([1-8])$"))) {
-//     uint8_t piece =
-//       Piece::WHT | charToPiece(results[1].length() == 0 ? 'p' : *(results[1].first));
-//     char disambiguation = results[2].length() == 0 ? 0 : *(results[2].first);
-//     // Optionally, results[3] will contain the capture notation. It is not used.
-//     int file = fileToX(*(results[4].first));
-//     int rank = rankToY(*(results[5].first));
-//     // Assume a file is specified to disambiguate - coord index 0.
-//     int disCoordI = 0;
-//     int dis       = fileToX(disambiguation);
-//     if (dis == -1) {  // If not, assume it's the rank - coord index 1.
-//       disCoordI = 1;
-//       dis       = rankToY(disambiguation);
-//     }
-//     auto match = std::find_if(
-//       sLegalVec.begin(),
-//       sLegalVec.end(),
-//       [piece, pos = glm::ivec2 {file, rank}, dis, disCoordI](const Position& b) {
-//         uint8_t pc         = b.piece(pos);
-//         bool    pieceMatch = Piece::color(pc) == Piece::color(piece) &&
-//                           Piece::type(pc) == Piece::type(piece);
-//         bool disMatch = dis == -1 || pos[disCoordI] == dis;
-//         return disMatch && pieceMatch;
-//       });
-//     if (match == sLegalVec.end()) {
-//       std::cout << "Not a legal move.\n";
-//       return false;
-//     }
-//     b = *match;
-//     return true;
-//   }
-//   if (doPromotion(b, mv, sLegalSet)) {
-//     return true;
-//   }
-//   return false;
-// }
+void doMove(const std::string& mv)
+{
+  // Generate the set of legal moves.
+  MoveList legal;
+  generateMoves(currentPosition(), legal);
+  auto match = std::find_if(
+    legal.begin(), legal.end(), [&mv](const Move& m) { return m.algebraic() == mv; });
+  if (match != legal.end()) {
+    match->commit(currentPosition());
+    return;
+  }
+  if (mv.size() == 4) {  // Check for promotions
+    StaticVector<char, 4> candidates;
+    for (const auto& m : legal) {
+      std::string alg = m.algebraic();
+      if (alg.starts_with(mv)) {
+        candidates.push_back(alg.back());
+      }
+    }
+    if (!candidates.empty()) {
+      std::cout << "Choose an option from ";
+      for (char c : candidates) {
+        std::cout << c << ", ";
+      }
+      std::cout << ": ";
+      char response;
+      std::cin >> response;
+      std::string fullmove = mv;
+      fullmove.push_back(response);
+      match = std::find_if(legal.begin(), legal.end(), [&fullmove](const Move& m) {
+        return m.algebraic() == fullmove;
+      });
+      if (match != legal.end()) {
+        match->commit(currentPosition());
+        return;
+      }
+    }
+  }
+  std::cout << "Not a legal move!\n";
+}
 
 namespace command {
 
@@ -188,24 +95,14 @@ void run(const std::string& cmd)
 
 namespace funcs {
 
-// void move(int argc, const char** argv)
-// {
-//   static auto opts =
-//     optionsWithPosnArgs<std::string>("move",
-//                                      "Make a move on the board.",
-//                                      {{"move",
-//                                        "The move you want to play. For eample: rg1 will
-//                                        " "move the rook to the g1 square."}});
-
-//   auto parsed = parseOptions(argc, argv, opts);
-//   if (!parsed) {
-//     logger().error("Failed to parse command!");
-//     return;
-//   }
-//   std::string mv = parsed.value()["move"].as<std::string>();
-//   doMove(currentPosition(), mv);
-//   view::update();
-// }
+void move(int argc, const char** argv)
+{
+  argparse::ArgumentParser parser("move");
+  parser.add_argument("movestr").help("The move").required();
+  parser.parse_args(argc, argv);
+  doMove(parser.get<std::string>("movestr"));
+  view::update();
+}
 
 void loadFen(int argc, const char** argv)
 {
@@ -236,7 +133,7 @@ void perft(int argc, const char** argv)
 
 void init()
 {
-  // cmdFuncMap().emplace("move", funcs::move);
+  cmdFuncMap().emplace("move", funcs::move);
   cmdFuncMap().emplace("fen", funcs::loadFen);
   cmdFuncMap().emplace("perft", funcs::perft);
 }

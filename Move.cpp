@@ -243,6 +243,16 @@ std::string Move::algebraic() const
   return out;
 }
 
+bool Move::operator==(const Move& other)
+{
+  return mType == other.mType && mFrom == other.mFrom && mTo == other.mTo;
+}
+
+bool Move::operator!=(const Move& other)
+{
+  return !(*this == other);
+}
+
 void MoveList::append(MoveType type, int from, int to, bool isCapture)
 {
   if (isCapture) {
