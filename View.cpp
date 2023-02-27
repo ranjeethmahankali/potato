@@ -365,11 +365,7 @@ namespace view {
 static bool                       sPaused = false;
 static GLFWwindow*                sWindow = nullptr;
 static std::unique_ptr<BoardView> sView;
-static std::mutex                 sMutex = std::mutex();
-static std::condition_variable    sCV    = std::condition_variable();
-static std::thread                sThread;
 static Shader                     sShader = Shader();
-static bool                       sClosed = true;
 
 static void glfw_error_cb(int error, const char* desc)
 {
@@ -424,7 +420,6 @@ int initGL()
   if (sWindow == nullptr) {
     return 1;
   }
-  glfwMakeContextCurrent(sWindow);
   glfwSwapInterval(0);
   glfwSetMouseButtonCallback(sWindow, &onMouseButton);
   // OpenGL bindings
@@ -448,45 +443,7 @@ int initGL()
   return 0;
 }
 
-void pause()
-{
-  std::lock_guard<std::mutex> lock(sMutex);
-  sPaused = true;
-}
-
-void acquireLock()
-{
-  while (sPaused) {
-    std::unique_lock<std::mutex> lock(sMutex);
-    sCV.wait(lock);
-    lock.unlock();
-  }
-}
-
-void loop()
-{
-  try {
-    glfwMakeContextCurrent(sWindow);
-    while (!glfwWindowShouldClose(sWindow)) {
-      glfwPollEvents();
-      glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      sView->draw();
-      glfwSwapBuffers(sWindow);
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      acquireLock();
-      if (sClosed) {
-        break;
-      }
-    }
-  }
-  catch (const std::exception& e) {
-    gl::logger().critical("Fatal error: {}", e.what());
-    return;
-  }
-}
-
-void start()
+void game()
 {
   try {
     int err = 0;
@@ -502,55 +459,34 @@ void start()
     gl::logger().critical("Fatal error: {}", e.what());
     return;
   }
-  sThread = std::thread(loop);
-  sClosed = false;
-}
-
-void resume()
-{
-  std::lock_guard<std::mutex> lock(sMutex);
-  sPaused = false;
-  sCV.notify_one();
+  try {
+    while (!glfwWindowShouldClose(sWindow)) {
+      glfwPollEvents();
+      glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      sView->draw();
+      glfwSwapBuffers(sWindow);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    if (!glfwWindowShouldClose(sWindow)) {
+      glfwSetWindowShouldClose(sWindow, GLFW_TRUE);  // Force close the window.
+    }
+    gl::logger().info("Closing window...\n");
+    glfwDestroyWindow(sWindow);
+    sShader.free();
+    Atlas::get().free();
+    sView->free();
+    glfwTerminate();
+  }
+  catch (const std::exception& e) {
+    gl::logger().critical("Fatal error: {}", e.what());
+    return;
+  }
 }
 
 void update()
 {
-  if (!sClosed) {
-    pause();
-    sView->update(currentPosition());
-    resume();
-  }
-}
-
-void join()
-{
-  sThread.join();
-}
-
-bool closed()
-{
-  return sClosed;
-}
-
-void stop()
-{
-  if (sClosed) {
-    return;
-  }
-  pause();
-  if (!glfwWindowShouldClose(sWindow)) {
-    glfwSetWindowShouldClose(sWindow, GLFW_TRUE);  // Force close the window.
-  }
-  resume();
-  gl::logger().info("Closing window...\n");
-  if (sWindow) {
-    glfwDestroyWindow(sWindow);
-  }
-  sShader.free();
-  Atlas::get().free();
-  sView->free();
-  glfwTerminate();
-  sClosed = true;
+  sView->update(currentPosition());
 }
 
 }  // namespace view

@@ -119,7 +119,7 @@ private:
 
 namespace view {
 
-void start();
+void game();
 void update();
 void stop();
 void join();

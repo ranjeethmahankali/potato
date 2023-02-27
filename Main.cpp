@@ -10,16 +10,13 @@ using namespace potato;
 
 static void play()
 {
-  view::start();
+  view::game();
   view::join();
 }
 
-static void cli(const bool showBoard = true)
+static void cli()
 {
   command::init();
-  if (showBoard) {
-    view::start();
-  }
   std::string input;
   bool        running = true;
   while (running && !view::closed()) {
@@ -33,10 +30,6 @@ static void cli(const bool showBoard = true)
     }
     command::run(input);
   }
-  if (showBoard) {
-    view::stop();
-    view::join();
-  }
 }
 
 int main(int argc, char** argv)
@@ -46,18 +39,9 @@ int main(int argc, char** argv)
     .help("Start in pure CLI mode instead of entering the game loop.")
     .implicit_value(true)
     .default_value(false);
-  parser.add_argument("--no-board")
-    .help("In CLI mode, don't show the board.")
-    .implicit_value(true)
-    .default_value(false);
   parser.parse_args(argc, argv);
   if (parser["--cli"] == true) {
-    if (parser["--no-board"] == true) {
-      cli(false);
-    }
-    else {
-      cli();
-    }
+    cli();
   }
   else {
     play();
