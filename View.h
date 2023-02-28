@@ -121,9 +121,6 @@ namespace view {
 
 void game();
 void update();
-void stop();
-void join();
-bool closed();
 
 }  // namespace view
 

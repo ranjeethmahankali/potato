@@ -1,6 +1,8 @@
 #pragma once
 
+#include <Move.h>
 #include <spdlog/spdlog.h>
+#include <optional>
 
 namespace potato {
 
@@ -14,5 +16,6 @@ void run(const std::string& cmd);
 
 }  // namespace command
 
-void doMove(const std::string& mv);
+std::optional<Move> doMove(const std::string& mv);
+
 }  // namespace potato

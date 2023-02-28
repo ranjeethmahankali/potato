@@ -362,14 +362,18 @@ void BoardView::free()
 }
 
 namespace view {
-static bool                       sPaused = false;
-static GLFWwindow*                sWindow = nullptr;
+
 static std::unique_ptr<BoardView> sView;
-static Shader                     sShader = Shader();
 
 static void glfw_error_cb(int error, const char* desc)
 {
   gl::logger().error("GLFW Error {}: {}", error, desc);
+}
+
+static std::optional<Move>& myMove()
+{
+  static std::optional<Move> sMove = std::nullopt;
+  return sMove;
 }
 
 static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
@@ -395,14 +399,14 @@ static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
         std::string mv = std::string(SquareCoord[sMove[0]]);
         mv += SquareCoord[sMove[1]];
         std::cout << "You: " << mv << std::endl;
-        doMove(mv);
-        sMove = {{-1, -1}};
+        sMove    = {{-1, -1}};
+        myMove() = doMove(mv);
       }
     }
   }
 }
 
-int initGL()
+int initGL(GLFWwindow*& window)
 {
   glfwSetErrorCallback(glfw_error_cb);
   if (!glfwInit()) {
@@ -416,21 +420,21 @@ int initGL()
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
   std::string title = "Potato";
-  sWindow           = glfwCreateWindow(1024, 1024, title.c_str(), nullptr, nullptr);
-  if (sWindow == nullptr) {
+  window            = glfwCreateWindow(1024, 1024, title.c_str(), nullptr, nullptr);
+  if (window == nullptr) {
     return 1;
   }
-  glfwSwapInterval(0);
-  glfwSetMouseButtonCallback(sWindow, &onMouseButton);
+  glfwMakeContextCurrent(window);
   // OpenGL bindings
-  if (glewInit() != GLEW_OK) {
-    gl::logger().error("Failed to initialize OpenGL bindings.");
+  int err = GLEW_OK;
+  if ((err = glewInit()) != GLEW_OK) {
+    gl::logger().error("Failed to initialize OpenGL bindings: {}", err);
     return 1;
   }
   gl::logger().info("OpenGL bindings are ready.");
   // TODO: Mouse support
   int W, H;
-  GL_CALL(glfwGetFramebufferSize(sWindow, &W, &H));
+  GL_CALL(glfwGetFramebufferSize(window, &W, &H));
   GL_CALL(glViewport(0, 0, W, H));
   GL_CALL(glEnable(GL_DEPTH_TEST));
   GL_CALL(glEnable(GL_BLEND));
@@ -440,40 +444,45 @@ int initGL()
   GL_CALL(glPointSize(3.0f));
   GL_CALL(glLineWidth(1.0f));
   GL_CALL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+  glfwSetMouseButtonCallback(window, &onMouseButton);
   return 0;
 }
 
 void game()
 {
+  using namespace std::chrono_literals;
+  GLFWwindow* window = nullptr;
   try {
     int err = 0;
-    if ((err = initGL())) {
+    if ((err = initGL(window))) {
       gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
       return;
     }
     sView = std::make_unique<BoardView>(currentPosition());
-    sShader.init();
-    sShader.use();
-  }
-  catch (const std::exception& e) {
-    gl::logger().critical("Fatal error: {}", e.what());
-    return;
-  }
-  try {
-    while (!glfwWindowShouldClose(sWindow)) {
+    Shader shader;
+    shader.init();
+    shader.use();
+    // Render loop.
+    while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
       glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       sView->draw();
-      glfwSwapBuffers(sWindow);
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      glfwSwapBuffers(window);
+      if (myMove()) {
+        std::this_thread::sleep_for(1s);
+        std::cout << " Me: " << *(myMove()) << std::endl;
+        myMove()->commit(currentPosition());
+        view::update();
+        myMove() = std::nullopt;
+      }
     }
-    if (!glfwWindowShouldClose(sWindow)) {
-      glfwSetWindowShouldClose(sWindow, GLFW_TRUE);  // Force close the window.
+    if (!glfwWindowShouldClose(window)) {
+      glfwSetWindowShouldClose(window, GLFW_TRUE);  // Force close the window.
     }
     gl::logger().info("Closing window...\n");
-    glfwDestroyWindow(sWindow);
-    sShader.free();
+    glfwDestroyWindow(window);
+    shader.free();
     Atlas::get().free();
     sView->free();
     glfwTerminate();

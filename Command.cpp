@@ -1,6 +1,5 @@
 #include <ArgVSplit.h>
 #include <Command.h>
-#include <Move.h>
 #include <Position.h>
 #include <View.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -15,9 +14,8 @@
 
 namespace potato {
 
-void doMove(const std::string& mv)
+std::optional<Move> doMove(const std::string& mv)
 {
-  using namespace std::chrono_literals;
   // Generate the set of legal moves.
   MoveList legal;
   generateMoves(currentPosition(), legal);
@@ -58,14 +56,11 @@ void doMove(const std::string& mv)
     }
   }
   if (success) {
-    std::this_thread::sleep_for(1s);
-    auto m = bestMove(currentPosition());
-    std::cout << " Me: " << m << std::endl;
-    m.commit(currentPosition());
-    view::update();
+    return bestMove(currentPosition());
   }
   else {
     std::cout << "Not a legal move!\n";
+    return std::nullopt;
   }
 }
 

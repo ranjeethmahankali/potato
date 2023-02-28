@@ -11,7 +11,6 @@ using namespace potato;
 static void play()
 {
   view::game();
-  view::join();
 }
 
 static void cli()
@@ -19,7 +18,7 @@ static void cli()
   command::init();
   std::string input;
   bool        running = true;
-  while (running && !view::closed()) {
+  while (running) {
     std::cout << ">>> ";
     std::getline(std::cin, input);
     if (input.empty())
