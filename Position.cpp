@@ -4,6 +4,8 @@
 #include <ostream>
 #include <regex>
 
+#include <iostream>
+
 namespace potato {
 
 char symbol(Piece pc)
@@ -557,6 +559,12 @@ void Position::pushState()
 void Position::popState()
 {
   mState.pop_back();
+}
+
+void Position::freezeState()
+{
+  mState[0] = mState.back();
+  mState.resize(1);
 }
 
 void Position::pushCapture(Piece p)

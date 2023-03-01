@@ -291,6 +291,7 @@ TEST_CASE("Best Move", "[bestmove]")
 {
   Position p =
     Position::fromFen("rnbqkbnr/1ppppppp/B7/8/4P3/8/PPPP1PPP/RNBQK1NR b KQkq - 0 2");
-  Move m = bestMove(p);
-  REQUIRE(m.algebraic() == "b7a6");
+  auto m = bestMove(p);
+  REQUIRE(m.mMove.has_value());
+  REQUIRE(m.mMove->algebraic() == "b7a6");
 }

@@ -370,9 +370,9 @@ static void glfw_error_cb(int error, const char* desc)
   gl::logger().error("GLFW Error {}: {}", error, desc);
 }
 
-static std::optional<Move>& myMove()
+static Response& myResponse()
 {
-  static std::optional<Move> sMove = std::nullopt;
+  static Response sMove = Response::none();
   return sMove;
 }
 
@@ -399,8 +399,8 @@ static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
         std::string mv = std::string(SquareCoord[sMove[0]]);
         mv += SquareCoord[sMove[1]];
         std::cout << "You: " << mv << std::endl;
-        sMove    = {{-1, -1}};
-        myMove() = doMove(mv);
+        sMove        = {{-1, -1}};
+        myResponse() = doMove(mv);
       }
     }
   }
@@ -469,16 +469,24 @@ void game()
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       sView->draw();
       glfwSwapBuffers(window);
-      if (myMove()) {
+      if (myResponse().mMove) {  // Pototo's move responding to the user's move.
         std::this_thread::sleep_for(1s);
-        std::cout << " Me: " << *(myMove()) << std::endl;
-        myMove()->commit(currentPosition());
+        std::cout << " Me: " << *(myResponse().mMove) << std::endl;
+        myResponse().mMove->commit(currentPosition());
         view::update();
-        myMove() = std::nullopt;
+        myResponse() = Response::none();
+        currentPosition().freezeState();
       }
-    }
-    if (!glfwWindowShouldClose(window)) {
-      glfwSetWindowShouldClose(window, GLFW_TRUE);  // Force close the window.
+      else if (myResponse().mConclusion == Conclusion::CHECKMATE) {
+        std::cout << "It's a checkmate!\n";
+        myResponse() = Response::none();
+        glfwSetMouseButtonCallback(window, nullptr);
+      }
+      else if (myResponse().mConclusion == Conclusion::STALEMATE) {
+        std::cout << "It's a stalemate!\n";
+        myResponse() = Response::none();
+        glfwSetMouseButtonCallback(window, nullptr);
+      }
     }
     gl::logger().info("Closing window...\n");
     glfwDestroyWindow(window);

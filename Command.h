@@ -16,6 +16,6 @@ void run(const std::string& cmd);
 
 }  // namespace command
 
-std::optional<Move> doMove(const std::string& mv);
+Response doMove(const std::string& mv);
 
 }  // namespace potato

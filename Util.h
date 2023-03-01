@@ -112,6 +112,7 @@ public:
   size_t   size() const { return size_t(std::distance(begin(), end())); }
   void     clear() { mEnd = mBuf.data(); }
   const T& operator[](size_t i) const { return mBuf[i]; }
+  T&       operator[](size_t i) { return mBuf[i]; }
   bool     operator==(const StaticVector<T, N>& other) const
   {
     return size() == other.size() && std::equal(begin(), end(), other.begin());

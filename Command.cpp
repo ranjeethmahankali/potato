@@ -10,11 +10,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "Util.h"
 
 namespace potato {
 
-std::optional<Move> doMove(const std::string& mv)
+Response doMove(const std::string& mv)
 {
   // Generate the set of legal moves.
   MoveList legal;
@@ -60,7 +59,7 @@ std::optional<Move> doMove(const std::string& mv)
   }
   else {
     std::cout << "Not a legal move!\n";
-    return std::nullopt;
+    return Response::none();
   }
 }
 

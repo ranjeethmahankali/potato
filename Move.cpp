@@ -607,8 +607,18 @@ void generateOrthoSlides(const Position& p,
     p, moves, pinned, all, notself, mask, kingPos, OTHER);
 }
 
+/**
+ * @brief Generate legal moves for a position.
+ *
+ * @tparam Player The color to move.
+ * @param p The position.
+ * @param moves Legal moves will be written to this list. Previous contents will be
+ * erased.
+ * @return bool Flag indicating if the player's king is in check. This may be used to
+ * identify checkmate / stalemate.
+ */
 template<Color Player>
-void generateMoves(const Position& p, MoveList& moves)
+[[nodiscard]] bool generateMoves(const Position& p, MoveList& moves)
 {
   static constexpr Direction Up           = RelativeDir<N, Player>;
   static constexpr BitBoard  HomePawnRank = Rank[RelativeRank<Player, 1> * 8];
@@ -624,6 +634,7 @@ void generateMoves(const Position& p, MoveList& moves)
   int                        kingPos      = lsb(ourKing);
   int                        otherKingPos = lsb(otherKing);
   BitBoard                   unsafe       = 0;
+  moves.clear();
   {  // Find all unsafe squares.
     BitBoard pcs = getBoard<Enemy, PWN>(p);
     unsafe = shift<RelativeDir<NE, Enemy>>(pcs) | shift<RelativeDir<NW, Enemy>>(pcs) |
@@ -730,12 +741,12 @@ void generateMoves(const Position& p, MoveList& moves)
     generateOrthoSlides<Player>(p, moves, pinned, all, notself, line, kingPos);
     // Generated all the moves to get out of check.
     // No more legal moves.
-    return;
+    return true;
   }
   case 2:
     // The king must move to a safe square.
     // We already generated all possible king moves, so we stop looking for other mvoes.
-    return;
+    return true;
   }
   {
     generatePawnPushMoves<Player, 1>(p, moves, pinned, empty, 0, kingPos);  // Single push
@@ -788,16 +799,18 @@ void generateMoves(const Position& p, MoveList& moves)
         CASTLE_SHORT, RelativeRank<Player, 0> * 8 + 4, RelativeRank<Player, 0> * 8 + 6);
     }
   }
+  return false;
 }
 
-void generateMoves(const Position& p, MoveList& moves)
+bool generateMoves(const Position& p, MoveList& moves)
 {
   if (p.turn() == WHT) {
-    generateMoves<WHT>(p, moves);
+    return generateMoves<WHT>(p, moves);
   }
   else if (p.turn() == BLK) {
-    generateMoves<BLK>(p, moves);
+    return generateMoves<BLK>(p, moves);
   }
+  return false;
 }
 
 size_t perftInternal(Position& p, int depth)
@@ -830,6 +843,11 @@ void perft(const Position& pOriginal, int depth)
     m.revert(p);
   }
   std::cout << std::endl << "Total: " << total << std::endl;
+}
+
+Response Response::none()
+{
+  return {std::nullopt, Conclusion::NONE};
 }
 
 }  // namespace potato

@@ -5,6 +5,7 @@
 #include <Util.h>
 #include <stdint.h>
 #include <bit>
+#include <optional>
 #include <variant>
 
 namespace potato {
@@ -107,8 +108,17 @@ int      lsb(BitBoard b);
 BitBoard bishopMoves(int sq, BitBoard blockers);
 BitBoard rookMoves(int sq, BitBoard blockers);
 BitBoard queenMoves(int sq, BitBoard blockers);
-void     generateMoves(const Position& p, MoveList& moves);
-void     perft(const Position& p, int depth);
+/**
+ * @brief Generate legal moves for the position.
+ *
+ * @param p The position.
+ * @param moves Legal moves will be written to this list. Previous contents will be
+ * erased.
+ * @return bool Flag indicating if the player's king is in check. This may be used to
+ * identify checkmate / stalemate.
+ */
+bool generateMoves(const Position& p, MoveList& moves);
+void perft(const Position& p, int depth);
 
 template<Color Player, PieceType... Types>
 BitBoard getBoard(const Position& p)
@@ -122,7 +132,22 @@ BitBoard getAllBoards(const Position& p)
   return getBoard<Player, PWN, HRS, BSH, ROK, QEN, KNG>(p);
 }
 
-Move bestMove(Position& p);
+enum struct Conclusion
+{
+  NONE      = 0,
+  CHECKMATE = 1,
+  STALEMATE = 2,
+};
+
+struct Response
+{
+  std::optional<Move> mMove;
+  Conclusion          mConclusion;
+
+  static Response none();
+};
+
+Response bestMove(Position& p);
 
 }  // namespace potato
 
