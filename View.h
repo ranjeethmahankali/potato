@@ -1,6 +1,7 @@
 #pragma once
 
 #include <GLUtil.h>
+#include <Move.h>
 #include <Position.h>
 #include <glm/glm.hpp>
 
@@ -16,15 +17,16 @@ struct Vertex
 
 // 64 squares for the board, 64 squares for the pieces and two triangles (6 vertices per
 // square).
-static constexpr size_t BufferSize = (64 + 64) * 6;
+static constexpr size_t BoardBufferSize = (64 + 64) * 6;
 
-class VertexBuffer : public std::array<Vertex, BufferSize>
+template<size_t Size>
+class VertexBuffer : public std::array<Vertex, Size>
 {
 public:
   VertexBuffer() = default;
-  ~VertexBuffer();
-  using std::array<Vertex, BufferSize>::size;
-  using std::array<Vertex, BufferSize>::data;
+  ~VertexBuffer() { free(); }
+  using std::array<Vertex, Size>::size;
+  using std::array<Vertex, Size>::data;
   // Disallow copying and moving.
   VertexBuffer(const VertexBuffer&)                   = delete;
   const VertexBuffer& operator=(const VertexBuffer&)  = delete;
@@ -39,17 +41,40 @@ public:
   /**
    * @brief Bind the vertex array.
    */
-  void bindVao() const;
+  void bindVao() const { GL_CALL(glBindVertexArray(mVAO)); }
   /**
    * @brief Binds the vertex buffer.
    */
-  void bindVbo() const;
+  void bindVbo() const { GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, mVBO)); }
   /**
    * @brief Allocates the vertex array and vertex buffer on the GPU and copies the data.
    */
-  void alloc();
+  void alloc()
+  {
+    free();  // Free if already bound.
+    GL_CALL(glGenVertexArrays(1, &mVAO));
+    GL_CALL(glGenBuffers(1, &mVBO));
 
-  void free();
+    bindVao();
+    bindVbo();
+    GL_CALL(glBufferData(GL_ARRAY_BUFFER, numbytes(), data(), GL_STATIC_DRAW));
+    Vertex::initAttributes();
+    // Unbind stuff.
+    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    GL_CALL(glBindVertexArray(0));
+  }
+
+  void free()
+  {
+    if (mVAO) {
+      GL_CALL(glDeleteVertexArrays(1, &mVAO));
+      mVAO = 0;
+    }
+    if (mVBO) {
+      GL_CALL(glDeleteBuffers(1, &mVBO));
+      mVBO = 0;
+    }
+  }
 
 private:
   uint32_t mVAO = 0;
@@ -114,13 +139,27 @@ struct BoardView
   void free();
 
 private:
-  VertexBuffer mVBuf;
+  VertexBuffer<BoardBufferSize> mVBuf;
+};
+
+struct MoveView
+{
+  MoveView();
+  explicit MoveView(Move m);
+  void update(Move m);
+  void draw() const;
+  void free();
+
+private:
+  static constexpr size_t        CircleSubDiv = 60;
+  VertexBuffer<(2 * 60 + 2) * 3> mVBuf;
 };
 
 namespace view {
 
 void game();
 void update();
+void update(Move m);
 
 }  // namespace view
 

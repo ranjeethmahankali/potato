@@ -23,7 +23,7 @@ Response doMove(const std::string& mv)
     legal.begin(), legal.end(), [&mv](const Move& m) { return m.algebraic() == mv; });
   if (match != legal.end()) {
     match->commit(currentPosition());
-    view::update();
+    view::update(*match);
     success = true;
   }
   else if (mv.size() == 4) {  // Check for promotions
@@ -49,7 +49,7 @@ Response doMove(const std::string& mv)
       });
       if (match != legal.end()) {
         match->commit(currentPosition());
-        view::update();
+        view::update(*match);
         success = true;
       }
     }
