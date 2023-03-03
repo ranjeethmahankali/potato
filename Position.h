@@ -149,6 +149,7 @@ public:
   void            switchTurn();
   void            clear();
   size_t          hash() const;
+  int             material() const;
   bool            valid() const;
   std::string     fen() const;
   void            incrementMoveCounter();
@@ -160,6 +161,7 @@ public:
   int             halfMoveCount() const;
   void            pushState();
   void            popState();
+  void            freezeState();
   void            pushCapture(Piece p);
   Piece           popCapture();
   static Position empty();
@@ -174,8 +176,9 @@ private:
   std::array<BitBoard, NUniquePieces> mBitBoards;
   StaticVector<State, 32>             mState;
   StaticVector<Piece, 64>             mCaptured;
-  size_t                              mHash = 0;
-  Color                               mTurn = Color::WHT;
+  size_t                              mHash     = 0;
+  int                                 mMaterial = 0;
+  Color                               mTurn     = Color::WHT;
 };
 
 void      writeBoard(BitBoard b, std::ostream& os);

@@ -1,9 +1,11 @@
+#include <Command.h>
 #include <Position.h>
 #include <Util.h>
 #include <View.h>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
+#include <iostream>
 #include <memory>
 
 namespace potato {
@@ -87,48 +89,6 @@ void Vertex::initAttributes()
   GL_CALL(glEnableVertexAttribArray(0));
   GL_CALL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, txColorOffset));
   GL_CALL(glEnableVertexAttribArray(1));
-}
-
-void VertexBuffer::free()
-{
-  if (mVAO) {
-    GL_CALL(glDeleteVertexArrays(1, &mVAO));
-    mVAO = 0;
-  }
-  if (mVBO) {
-    GL_CALL(glDeleteBuffers(1, &mVBO));
-    mVBO = 0;
-  }
-}
-
-VertexBuffer::~VertexBuffer()
-{
-  free();
-}
-
-void VertexBuffer::bindVao() const
-{
-  GL_CALL(glBindVertexArray(mVAO));
-}
-
-void VertexBuffer::bindVbo() const
-{
-  GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, mVBO));
-}
-
-void VertexBuffer::alloc()
-{
-  free();  // Free if already bound.
-  GL_CALL(glGenVertexArrays(1, &mVAO));
-  GL_CALL(glGenBuffers(1, &mVBO));
-
-  bindVao();
-  bindVbo();
-  GL_CALL(glBufferData(GL_ARRAY_BUFFER, numbytes(), data(), GL_STATIC_DRAW));
-  Vertex::initAttributes();
-  // Unbind stuff.
-  GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
-  GL_CALL(glBindVertexArray(0));
 }
 
 Atlas& Atlas::get()
@@ -283,13 +243,19 @@ Shader::~Shader()
   free();
 }
 
+static glm::vec2 quadCenter(glm::ivec2 qpos)
+{
+  return 2.f * (glm::vec2(0.0625f, 0.0625f) + glm::vec2(qpos) / 8.f) -
+         glm::vec2 {1.f, 1.f};
+}
+
 static glm::vec2 quadVertex(glm::ivec2 qpos, int vertexIdx)
 {
   static constexpr std::array<glm::vec2, 4> sCorners = {
     {{-0.0625f, -0.0625f}, {0.0625f, -0.0625f}, {0.0625f, 0.0625f}, {-0.0625f, 0.0625f}}};
   // Flip along the y axis.
   qpos.y = 7 - qpos.y;
-  return 2.f * ((glm::vec2(0.0625, 0.0625f) + glm::vec2(qpos) / 8.f)  // center
+  return 2.f * ((glm::vec2(0.0625f, 0.0625f) + glm::vec2(qpos) / 8.f)  // center
                 + sCorners[vertexIdx]) -
          glm::vec2 {1.f, 1.f};
 }
@@ -319,6 +285,11 @@ BoardView::BoardView(const Position& b)
   update(b);
 }
 
+BoardView::~BoardView()
+{
+  free();
+}
+
 void BoardView::update(const Position& b)
 {
   static constexpr size_t PieceOffset = 64 * 6;
@@ -345,12 +316,12 @@ void BoardView::update(const Position& b)
     }
   }
   mVBuf.alloc();
-  mVBuf.bindVao();
-  mVBuf.bindVbo();
 }
 
 void BoardView::draw() const
 {
+  mVBuf.bindVao();
+  mVBuf.bindVbo();
   GL_CALL(glDrawArrays(GL_TRIANGLES, 0, mVBuf.size()));
 }
 
@@ -359,22 +330,198 @@ void BoardView::free()
   mVBuf.free();
 }
 
+MoveView::MoveView()
+{
+  std::fill(mVBuf.begin(), mVBuf.end(), Vertex {glm::vec3(0.), glm::vec3(0.)});
+}
+
+MoveView::~MoveView()
+{
+  free();
+}
+
+MoveView::MoveView(Move m)
+{
+  update(m);
+}
+
+void MoveView::update(Move m)
+{
+  static constexpr glm::vec3 sMoveColor = {2.f, 0.f, 1.f};
+  static constexpr float     MoveDepth  = -0.2f;
+  static constexpr float     sTheta     = float(M_PI) / float(CircleSubDiv);
+  static constexpr float     sThickness = 0.01f;
+  int                        from       = m.from();
+  int                        to         = m.to();
+  auto c1 = glm::vec3(quadCenter({from % 8, 7 - (from / 8)}), MoveDepth);
+  auto c2 = glm::vec3(quadCenter({to % 8, 7 - (to / 8)}), MoveDepth);
+  auto x  = glm::normalize(c2 - c1);
+  auto y  = glm::cross(glm::vec3(0.f, 0.f, 1.f), x);
+  x *= sThickness;
+  y *= sThickness;
+  float ang = float(1.5 * M_PI);
+  auto  dst = mVBuf.begin();
+  for (size_t i = 0; i < CircleSubDiv; ++i) {
+    *(dst++) = Vertex {c1 + std::sin(ang) * y + std::cos(ang) * x, sMoveColor};
+    ang -= sTheta;
+    *(dst++) = Vertex {c1 + std::sin(ang) * y + std::cos(ang) * x, sMoveColor};
+    *(dst++) = Vertex {c1, sMoveColor};
+  }
+  ang = float(0.5 * M_PI);
+  for (size_t i = 0; i < CircleSubDiv; ++i) {
+    *(dst++) = Vertex {c2 + std::sin(ang) * y + std::cos(ang) * x, sMoveColor};
+    ang -= sTheta;
+    *(dst++) = Vertex {c2 + std::sin(ang) * y + std::cos(ang) * x, sMoveColor};
+    *(dst++) = Vertex {c2, sMoveColor};
+  }
+  *(dst++) = Vertex {c1 + y, sMoveColor};
+  *(dst++) = Vertex {c2 + y, sMoveColor};
+  *(dst++) = Vertex {c1 - y, sMoveColor};
+  *(dst++) = Vertex {c2 + y, sMoveColor};
+  *(dst++) = Vertex {c2 - y, sMoveColor};
+  *(dst++) = Vertex {c1 - y, sMoveColor};
+
+  mVBuf.alloc();
+}
+
+void MoveView::draw() const
+{
+  mVBuf.bindVao();
+  mVBuf.bindVbo();
+  GL_CALL(glDrawArrays(GL_TRIANGLES, 0, mVBuf.size()));
+}
+
+void MoveView::free()
+{
+  mVBuf.free();
+}
+
+SuggestionView::SuggestionView()
+{
+  clear();
+}
+
+SuggestionView::~SuggestionView()
+{
+  free();
+}
+
+SuggestionView::SuggestionView(int from)
+{
+  update(from);
+}
+
+void SuggestionView::update(int from)
+{
+  static constexpr glm::vec3 SuggestionColor = {0.25, 0.05, -2.f};
+  static constexpr float     SuggestionDepth = -0.1f;
+  clear();
+  MoveList legal;
+  generateMoves(currentPosition(), legal);
+  auto end = std::remove_if(
+    legal.begin(), legal.end(), [from](Move m) { return m.from() != from; });
+  auto begin = legal.begin();
+  auto dst   = mVBuf.begin();
+  while (begin != end) {
+    std::array<Vertex, 4> quad;
+    int                   to  = (begin++)->to();
+    glm::ivec2            pos = {to % 8, to / 8};
+    for (int vi = 0; vi < 4; ++vi) {
+      quad[vi] =
+        Vertex {glm::vec3(quadVertex(pos, vi), SuggestionDepth), SuggestionColor};
+    }
+    *(dst++) = quad[0];
+    *(dst++) = quad[1];
+    *(dst++) = quad[2];
+    *(dst++) = quad[0];
+    *(dst++) = quad[2];
+    *(dst++) = quad[3];
+  }
+  mVBuf.alloc();
+}
+
+void SuggestionView::draw() const
+{
+  mVBuf.bindVao();
+  mVBuf.bindVbo();
+  GL_CALL(glDrawArrays(GL_TRIANGLES, 0, mVBuf.size()));
+}
+
+void SuggestionView::free()
+{
+  mVBuf.free();
+}
+
+void SuggestionView::clear(bool realloc)
+{
+  mVBuf.fill(Vertex {glm::vec3 {0., 0., 0.}, glm::vec3 {0., 0., 0.}});
+  if (realloc) {
+    mVBuf.alloc();
+  }
+}
+
 namespace view {
-static bool                       sPaused = false;
-static GLFWwindow*                sWindow = nullptr;
-static std::unique_ptr<BoardView> sView;
-static std::mutex                 sMutex = std::mutex();
-static std::condition_variable    sCV    = std::condition_variable();
-static std::thread                sThread;
-static Shader                     sShader = Shader();
-static bool                       sClosed = true;
+
+static std::unique_ptr<BoardView>      sView;
+static std::unique_ptr<MoveView>       sMoveView;
+static std::unique_ptr<SuggestionView> sSuggestionView;
 
 static void glfw_error_cb(int error, const char* desc)
 {
   gl::logger().error("GLFW Error {}: {}", error, desc);
 }
 
-int initGL()
+static Response& myResponse()
+{
+  static Response sMove = Response::none();
+  return sMove;
+}
+
+static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
+{
+  static std::array<int, 2> sMove    = {{-1, -1}};
+  static auto&              response = myResponse();
+  if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    int& target = sMove[0] == -1 ? sMove[0] : sMove[1];
+    if (action == GLFW_PRESS) {
+      glm::dvec2 pos;
+      GL_CALL(glfwGetCursorPos(window, &pos.x, &pos.y));
+      glm::ivec2 ipos = glm::ivec2(glm::floor(pos / 128.0));
+      target          = ipos.y * 8 + ipos.x;
+    }
+    else if (action == GLFW_RELEASE) {
+      glm::dvec2 pos;
+      GL_CALL(glfwGetCursorPos(window, &pos.x, &pos.y));
+      glm::ivec2 ipos = glm::ivec2(glm::floor(pos / 128.0));
+      int        t2   = ipos.y * 8 + ipos.x;
+      if (t2 != target) {
+        target = -1;
+      }
+      if (sMove[0] != -1 && sMove[1] != -1) {
+        std::string mv = std::string(SquareCoord[sMove[0]]);
+        mv += SquareCoord[sMove[1]];
+        std::cout << "You: " << mv << std::endl;
+        sSuggestionView->clear(true);
+        response = doMove(mv);
+        if (response.isNone()) {
+          // Not a legal move.
+          // Likely the user just wants to change their piece selection.
+          sMove[0] = std::exchange(sMove[1], -1);
+          sSuggestionView->update(sMove[0]);
+        }
+        else {
+          sMove = {{-1, -1}};
+        }
+      }
+      else if (sMove[0] != -1) {
+        // Selected a piece, show possible moves.
+        sSuggestionView->update(sMove[0]);
+      }
+    }
+  }
+}
+
+int initGL(GLFWwindow*& window)
 {
   glfwSetErrorCallback(glfw_error_cb);
   if (!glfwInit()) {
@@ -388,21 +535,20 @@ int initGL()
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
   std::string title = "Potato";
-  sWindow           = glfwCreateWindow(1024, 1024, title.c_str(), nullptr, nullptr);
-  if (sWindow == nullptr) {
+  window            = glfwCreateWindow(1024, 1024, title.c_str(), nullptr, nullptr);
+  if (window == nullptr) {
     return 1;
   }
-  glfwMakeContextCurrent(sWindow);
-  glfwSwapInterval(0);
+  glfwMakeContextCurrent(window);
   // OpenGL bindings
-  if (glewInit() != GLEW_OK) {
-    gl::logger().error("Failed to initialize OpenGL bindings.");
+  int err = GLEW_OK;
+  if ((err = glewInit()) != GLEW_OK) {
+    gl::logger().error("Failed to initialize OpenGL bindings: {}", err);
     return 1;
   }
   gl::logger().info("OpenGL bindings are ready.");
-  // TODO: Mouse support
   int W, H;
-  GL_CALL(glfwGetFramebufferSize(sWindow, &W, &H));
+  GL_CALL(glfwGetFramebufferSize(window, &W, &H));
   GL_CALL(glViewport(0, 0, W, H));
   GL_CALL(glEnable(GL_DEPTH_TEST));
   GL_CALL(glEnable(GL_BLEND));
@@ -412,112 +558,76 @@ int initGL()
   GL_CALL(glPointSize(3.0f));
   GL_CALL(glLineWidth(1.0f));
   GL_CALL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+  glfwSetMouseButtonCallback(window, &onMouseButton);
   return 0;
 }
 
-void pause()
+void game()
 {
-  std::lock_guard<std::mutex> lock(sMutex);
-  sPaused = true;
-}
-
-void acquireLock()
-{
-  while (sPaused) {
-    std::unique_lock<std::mutex> lock(sMutex);
-    sCV.wait(lock);
-    lock.unlock();
-  }
-}
-
-void loop()
-{
+  using namespace std::chrono_literals;
+  GLFWwindow* window = nullptr;
   try {
-    glfwMakeContextCurrent(sWindow);
-    while (!glfwWindowShouldClose(sWindow)) {
+    int err = 0;
+    if ((err = initGL(window))) {
+      gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
+      return;
+    }
+    sView           = std::make_unique<BoardView>(currentPosition());
+    sMoveView       = std::make_unique<MoveView>();
+    sSuggestionView = std::make_unique<SuggestionView>();
+    Shader shader;
+    shader.init();
+    shader.use();
+    // Render loop.
+    while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
       glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       sView->draw();
-      glfwSwapBuffers(sWindow);
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      acquireLock();
-      if (sClosed) {
-        break;
+      sMoveView->draw();
+      sSuggestionView->draw();
+      glfwSwapBuffers(window);
+      if (myResponse().mMove) {  // Pototo's move responding to the user's move.
+        std::this_thread::sleep_for(1s);
+        std::cout << " Me: " << *(myResponse().mMove) << std::endl;
+        myResponse().mMove->commit(currentPosition());
+        update(*(myResponse().mMove));
+        myResponse() = Response::none();
+        currentPosition().freezeState();
+      }
+      else if (myResponse().mConclusion == Conclusion::CHECKMATE) {
+        std::cout << "It's a checkmate!\n";
+        myResponse() = Response::none();
+        glfwSetMouseButtonCallback(window, nullptr);
+      }
+      else if (myResponse().mConclusion == Conclusion::STALEMATE) {
+        std::cout << "It's a stalemate!\n";
+        myResponse() = Response::none();
+        glfwSetMouseButtonCallback(window, nullptr);
       }
     }
+    gl::logger().info("Closing window...\n");
+    glfwDestroyWindow(window);
+    shader.free();
+    Atlas::get().free();
+    sView->free();
+    glfwTerminate();
   }
   catch (const std::exception& e) {
     gl::logger().critical("Fatal error: {}", e.what());
     return;
   }
-}
-
-void start()
-{
-  try {
-    int err = 0;
-    if ((err = initGL())) {
-      gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
-      return;
-    }
-    sView = std::make_unique<BoardView>(currentPosition());
-    sShader.init();
-    sShader.use();
-  }
-  catch (const std::exception& e) {
-    gl::logger().critical("Fatal error: {}", e.what());
-    return;
-  }
-  sThread = std::thread(loop);
-  sClosed = false;
-}
-
-void resume()
-{
-  std::lock_guard<std::mutex> lock(sMutex);
-  sPaused = false;
-  sCV.notify_one();
 }
 
 void update()
 {
-  if (!sClosed) {
-    pause();
-    sView->update(currentPosition());
-    resume();
-  }
+  sView->update(currentPosition());
 }
 
-void join()
+void update(Move m)
 {
-  sThread.join();
-}
-
-bool closed()
-{
-  return sClosed;
-}
-
-void stop()
-{
-  if (sClosed) {
-    return;
-  }
-  pause();
-  if (!glfwWindowShouldClose(sWindow)) {
-    glfwSetWindowShouldClose(sWindow, GLFW_TRUE);  // Force close the window.
-  }
-  resume();
-  gl::logger().info("Closing window...\n");
-  if (sWindow) {
-    glfwDestroyWindow(sWindow);
-  }
-  sShader.free();
-  Atlas::get().free();
-  sView->free();
-  glfwTerminate();
-  sClosed = true;
+  sView->update(currentPosition());
+  sMoveView->update(m);
 }
 
 }  // namespace view

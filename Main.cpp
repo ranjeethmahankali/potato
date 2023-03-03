@@ -8,30 +8,9 @@
 
 using namespace potato;
 
-static void gameLoop()
-{
-  std::string input;
-  bool        running = true;
-  while (running && !view::closed()) {
-    std::cout << ">>> ";
-    std::getline(std::cin, input);
-    if (input.empty())
-      continue;
-    if (input == "exit" || input == "quit") {
-      running = false;
-      continue;
-    }
-    command::run(input);
-  }
-}
-
 static void play()
 {
-  command::init();
-  view::start();
-  gameLoop();
-  view::stop();
-  view::join();
+  view::game();
 }
 
 static void cli()
@@ -40,6 +19,7 @@ static void cli()
   std::string input;
   bool        running = true;
   while (running) {
+    std::cout << ">>> ";
     std::getline(std::cin, input);
     if (input.empty())
       continue;
