@@ -479,7 +479,8 @@ static Response& myResponse()
 
 static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
 {
-  static std::array<int, 2> sMove = {{-1, -1}};
+  static std::array<int, 2> sMove    = {{-1, -1}};
+  static auto&              response = myResponse();
   if (button == GLFW_MOUSE_BUTTON_LEFT) {
     int& target = sMove[0] == -1 ? sMove[0] : sMove[1];
     if (action == GLFW_PRESS) {
@@ -500,9 +501,17 @@ static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
         std::string mv = std::string(SquareCoord[sMove[0]]);
         mv += SquareCoord[sMove[1]];
         std::cout << "You: " << mv << std::endl;
-        sMove = {{-1, -1}};
         sSuggestionView->clear(true);
-        myResponse() = doMove(mv);
+        response = doMove(mv);
+        if (response.isNone()) {
+          // Not a legal move.
+          // Likely the user just wants to change their piece selection.
+          sMove[0] = std::exchange(sMove[1], -1);
+          sSuggestionView->update(sMove[0]);
+        }
+        else {
+          sMove = {{-1, -1}};
+        }
       }
       else if (sMove[0] != -1) {
         // Selected a piece, show possible moves.

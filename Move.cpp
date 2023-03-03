@@ -850,6 +850,11 @@ Response Response::none()
   return {std::nullopt, Conclusion::NONE};
 }
 
+bool Response::isNone() const
+{
+  return !mMove.has_value() && mConclusion == Conclusion::NONE;
+}
+
 }  // namespace potato
 
 namespace std {

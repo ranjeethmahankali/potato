@@ -58,7 +58,7 @@ Response doMove(const std::string& mv)
     return bestMove(currentPosition());
   }
   else {
-    std::cout << "Not a legal move!\n";
+    // Not a legal move, just change the 'from' selection to the new square.
     return Response::none();
   }
 }

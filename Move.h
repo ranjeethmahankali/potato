@@ -145,6 +145,7 @@ struct Response
   Conclusion          mConclusion;
 
   static Response none();
+  bool            isNone() const;
 };
 
 Response bestMove(Position& p);
