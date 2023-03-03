@@ -153,8 +153,8 @@ struct MoveView
   void free();
 
 private:
-  static constexpr size_t        CircleSubDiv = 60;
-  VertexBuffer<(2 * 60 + 2) * 3> mVBuf;
+  static constexpr size_t                  CircleSubDiv = 31;
+  VertexBuffer<(2 * CircleSubDiv + 2) * 3> mVBuf;
 };
 
 struct SuggestionView
