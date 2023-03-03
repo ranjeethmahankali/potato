@@ -134,6 +134,7 @@ private:
 struct BoardView
 {
   explicit BoardView(const Position& b);
+  ~BoardView();
   void update(const Position& board);
   void draw() const;
   void free();
@@ -145,6 +146,7 @@ private:
 struct MoveView
 {
   MoveView();
+  ~MoveView();
   explicit MoveView(Move m);
   void update(Move m);
   void draw() const;
@@ -153,6 +155,20 @@ struct MoveView
 private:
   static constexpr size_t        CircleSubDiv = 60;
   VertexBuffer<(2 * 60 + 2) * 3> mVBuf;
+};
+
+struct SuggestionView
+{
+  SuggestionView();
+  ~SuggestionView();
+  explicit SuggestionView(int from);
+  void update(int from);
+  void draw() const;
+  void free();
+  void clear(bool realloc = false);
+
+private:
+  VertexBuffer<32 * 6> mVBuf;
 };
 
 namespace view {

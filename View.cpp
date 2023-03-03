@@ -285,6 +285,11 @@ BoardView::BoardView(const Position& b)
   update(b);
 }
 
+BoardView::~BoardView()
+{
+  free();
+}
+
 void BoardView::update(const Position& b)
 {
   static constexpr size_t PieceOffset = 64 * 6;
@@ -330,6 +335,11 @@ MoveView::MoveView()
   std::fill(mVBuf.begin(), mVBuf.end(), Vertex {glm::vec3(0.), glm::vec3(0.)});
 }
 
+MoveView::~MoveView()
+{
+  free();
+}
+
 MoveView::MoveView(Move m)
 {
   update(m);
@@ -338,13 +348,13 @@ MoveView::MoveView(Move m)
 void MoveView::update(Move m)
 {
   static constexpr glm::vec3 sMoveColor = {2.f, 0.f, 1.f};
-  static constexpr float     Depth      = -0.2f;
+  static constexpr float     MoveDepth  = -0.2f;
   static constexpr float     sTheta     = float(M_PI) / float(CircleSubDiv);
   static constexpr float     sThickness = 0.01f;
   int                        from       = m.from();
   int                        to         = m.to();
-  auto c1 = glm::vec3(quadCenter({from % 8, 7 - (from / 8)}), Depth);
-  auto c2 = glm::vec3(quadCenter({to % 8, 7 - (to / 8)}), Depth);
+  auto c1 = glm::vec3(quadCenter({from % 8, 7 - (from / 8)}), MoveDepth);
+  auto c2 = glm::vec3(quadCenter({to % 8, 7 - (to / 8)}), MoveDepth);
   auto x  = glm::normalize(c2 - c1);
   auto y  = glm::cross(glm::vec3(0.f, 0.f, 1.f), x);
   x *= sThickness;
@@ -386,10 +396,75 @@ void MoveView::free()
   mVBuf.free();
 }
 
+SuggestionView::SuggestionView()
+{
+  clear();
+}
+
+SuggestionView::~SuggestionView()
+{
+  free();
+}
+
+SuggestionView::SuggestionView(int from)
+{
+  update(from);
+}
+
+void SuggestionView::update(int from)
+{
+  static constexpr glm::vec3 SuggestionColor = {0.25, 0.05, -2.f};
+  static constexpr float     SuggestionDepth = -0.1f;
+  clear();
+  MoveList legal;
+  generateMoves(currentPosition(), legal);
+  auto end = std::remove_if(
+    legal.begin(), legal.end(), [from](Move m) { return m.from() != from; });
+  auto begin = legal.begin();
+  auto dst   = mVBuf.begin();
+  while (begin != end) {
+    std::array<Vertex, 4> quad;
+    int                   to  = (begin++)->to();
+    glm::ivec2            pos = {to % 8, to / 8};
+    for (int vi = 0; vi < 4; ++vi) {
+      quad[vi] =
+        Vertex {glm::vec3(quadVertex(pos, vi), SuggestionDepth), SuggestionColor};
+    }
+    *(dst++) = quad[0];
+    *(dst++) = quad[1];
+    *(dst++) = quad[2];
+    *(dst++) = quad[0];
+    *(dst++) = quad[2];
+    *(dst++) = quad[3];
+  }
+  mVBuf.alloc();
+}
+
+void SuggestionView::draw() const
+{
+  mVBuf.bindVao();
+  mVBuf.bindVbo();
+  GL_CALL(glDrawArrays(GL_TRIANGLES, 0, mVBuf.size()));
+}
+
+void SuggestionView::free()
+{
+  mVBuf.free();
+}
+
+void SuggestionView::clear(bool realloc)
+{
+  mVBuf.fill(Vertex {glm::vec3 {0., 0., 0.}, glm::vec3 {0., 0., 0.}});
+  if (realloc) {
+    mVBuf.alloc();
+  }
+}
+
 namespace view {
 
-static std::unique_ptr<BoardView> sView;
-static std::unique_ptr<MoveView>  sMoveView;
+static std::unique_ptr<BoardView>      sView;
+static std::unique_ptr<MoveView>       sMoveView;
+static std::unique_ptr<SuggestionView> sSuggestionView;
 
 static void glfw_error_cb(int error, const char* desc)
 {
@@ -425,8 +500,13 @@ static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
         std::string mv = std::string(SquareCoord[sMove[0]]);
         mv += SquareCoord[sMove[1]];
         std::cout << "You: " << mv << std::endl;
-        sMove        = {{-1, -1}};
+        sMove = {{-1, -1}};
+        sSuggestionView->clear(true);
         myResponse() = doMove(mv);
+      }
+      else if (sMove[0] != -1) {
+        // Selected a piece, show possible moves.
+        sSuggestionView->update(sMove[0]);
       }
     }
   }
@@ -483,8 +563,9 @@ void game()
       gl::logger().error("Failed to initialize the viewer. Error code {}.", err);
       return;
     }
-    sView     = std::make_unique<BoardView>(currentPosition());
-    sMoveView = std::make_unique<MoveView>();
+    sView           = std::make_unique<BoardView>(currentPosition());
+    sMoveView       = std::make_unique<MoveView>();
+    sSuggestionView = std::make_unique<SuggestionView>();
     Shader shader;
     shader.init();
     shader.use();
@@ -495,6 +576,7 @@ void game()
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       sView->draw();
       sMoveView->draw();
+      sSuggestionView->draw();
       glfwSwapBuffers(window);
       if (myResponse().mMove) {  // Pototo's move responding to the user's move.
         std::this_thread::sleep_for(1s);
