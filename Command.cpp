@@ -13,7 +13,7 @@
 
 namespace potato {
 
-Response doMove(const std::string& mv)
+bool doMove(const std::string& mv)
 {
   // Generate the set of legal moves.
   MoveList legal;
@@ -54,13 +54,7 @@ Response doMove(const std::string& mv)
       }
     }
   }
-  if (success) {
-    return bestMove(currentPosition());
-  }
-  else {
-    // Not a legal move, just change the 'from' selection to the new square.
-    return Response::none();
-  }
+  return success;
 }
 
 namespace command {
@@ -102,14 +96,6 @@ void run(const std::string& cmd)
 
 namespace funcs {
 
-void move(int argc, const char** argv)
-{
-  argparse::ArgumentParser parser("move");
-  parser.add_argument("movestr").help("The move").required();
-  parser.parse_args(argc, argv);
-  doMove(parser.get<std::string>("movestr"));
-}
-
 void loadFen(int argc, const char** argv)
 {
   argparse::ArgumentParser parser("fen");
@@ -145,7 +131,6 @@ void show(int argc, const char** argv)
 
 void init()
 {
-  cmdFuncMap().emplace("move", funcs::move);
   cmdFuncMap().emplace("fen", funcs::loadFen);
   cmdFuncMap().emplace("perft", funcs::perft);
   cmdFuncMap().emplace("show", funcs::show);

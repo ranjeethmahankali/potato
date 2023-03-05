@@ -38,14 +38,14 @@ std::string textFromFile(const fs::path& fpath)
 }
 
 Timer::Timer(const std::string& name)
-    : mName(name)
+    : mDesc(name)
     , mStart(InternalClockT::now())
 {}
 
 Timer::~Timer()
 {
   auto elapsed = InternalClockT::now() - mStart;
-  std::cout << "Timer '" << mName << "' stopped after "
+  std::cout << mDesc << ": "
             << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count()
             << "ms\n";
 }

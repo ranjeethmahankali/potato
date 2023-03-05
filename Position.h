@@ -83,6 +83,9 @@ constexpr inline Piece operator|(PieceType type, Color c)
 
 static constexpr size_t NUniquePieces = 15;
 
+static constexpr std::array<int, NUniquePieces> MaterialValue = {
+  {0, -1, -3, -3, -5, -9, -100, 0, 0, 1, 3, 3, 5, 9, 100}};
+
 enum Castle : uint8_t
 {
   B_LONG  = 1,

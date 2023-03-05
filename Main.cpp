@@ -8,9 +8,9 @@
 
 using namespace potato;
 
-static void play()
+static void play(bool asBlack = false, bool flipBoard = false)
 {
-  view::game();
+  view::game(asBlack, flipBoard);
 }
 
 static void cli()
@@ -38,12 +38,23 @@ int main(int argc, char** argv)
     .help("Start in pure CLI mode instead of entering the game loop.")
     .implicit_value(true)
     .default_value(false);
+  parser.add_argument("--as-black")
+    .help("Start the game to play as black.")
+    .implicit_value(true)
+    .default_value(false);
+  parser.add_argument("--flip-board")
+    .help("See the board from Potato's side.")
+    .implicit_value(true)
+    .default_value(false);
   parser.parse_args(argc, argv);
   if (parser["--cli"] == true) {
     cli();
   }
   else {
-    play();
+    bool asBlack   = parser["--as-black"] == true;
+    bool flipBoard = parser["--flip-board"] == true;
+    play(asBlack, flipBoard);
   }
+
   return 0;
 }

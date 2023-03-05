@@ -173,7 +173,7 @@ private:
 
 namespace view {
 
-void game();
+void game(bool asBlack = false, bool flipBoard = false);
 void update();
 void update(Move m);
 

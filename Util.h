@@ -36,14 +36,14 @@ public:
   /**
    * @brief Create a new timer that prints the elapsed time to the given output stream.
    *
-   * @param name Name of the timer.
+   * @param description Of what is being timed.
    * @param out Output stream.
    */
-  explicit Timer(const std::string& name);
+  explicit Timer(const std::string& description);
   ~Timer();
 
 private:
-  std::string                                    mName;
+  std::string                                    mDesc;
   std::chrono::high_resolution_clock::time_point mStart;
 };
 
@@ -51,6 +51,7 @@ template<typename T, size_t N>
 struct StaticVector
 {
   static constexpr size_t Size = N;
+  using value_type             = T;
 
 protected:
   std::array<T, N> mBuf;

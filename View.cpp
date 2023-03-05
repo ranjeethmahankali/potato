@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <thread>
 
 namespace potato {
 static constexpr uint32_t AtlasWidth  = 768;
@@ -243,21 +244,23 @@ Shader::~Shader()
   free();
 }
 
+static bool sFlipBoard = false;
+
 static glm::vec2 quadCenter(glm::ivec2 qpos)
 {
-  return 2.f * (glm::vec2(0.0625f, 0.0625f) + glm::vec2(qpos) / 8.f) -
-         glm::vec2 {1.f, 1.f};
+  qpos.y = 7 - qpos.y;
+  if (sFlipBoard) {
+    qpos = glm::ivec2(7, 7) - qpos;
+  }
+  return (glm::vec2(0.125f, 0.125f) + glm::vec2(qpos) / 4.f) - glm::vec2 {1.f, 1.f};
 }
 
 static glm::vec2 quadVertex(glm::ivec2 qpos, int vertexIdx)
 {
   static constexpr std::array<glm::vec2, 4> sCorners = {
-    {{-0.0625f, -0.0625f}, {0.0625f, -0.0625f}, {0.0625f, 0.0625f}, {-0.0625f, 0.0625f}}};
+    {{-0.125f, -0.125f}, {0.125f, -0.125f}, {0.125f, 0.125f}, {-0.125f, 0.125f}}};
   // Flip along the y axis.
-  qpos.y = 7 - qpos.y;
-  return 2.f * ((glm::vec2(0.0625f, 0.0625f) + glm::vec2(qpos) / 8.f)  // center
-                + sCorners[vertexIdx]) -
-         glm::vec2 {1.f, 1.f};
+  return quadCenter(qpos) + sCorners[vertexIdx];
 }
 
 BoardView::BoardView(const Position& b)
@@ -353,10 +356,10 @@ void MoveView::update(Move m)
   static constexpr float     sThickness = 0.01f;
   int                        from       = m.from();
   int                        to         = m.to();
-  auto c1 = glm::vec3(quadCenter({from % 8, 7 - (from / 8)}), MoveDepth);
-  auto c2 = glm::vec3(quadCenter({to % 8, 7 - (to / 8)}), MoveDepth);
-  auto x  = glm::normalize(c2 - c1);
-  auto y  = glm::cross(glm::vec3(0.f, 0.f, 1.f), x);
+  auto                       c1 = glm::vec3(quadCenter({from % 8, from / 8}), MoveDepth);
+  auto                       c2 = glm::vec3(quadCenter({to % 8, to / 8}), MoveDepth);
+  auto                       x  = glm::normalize(c2 - c1);
+  auto                       y  = glm::cross(glm::vec3(0.f, 0.f, 1.f), x);
   x *= sThickness;
   y *= sThickness;
   float ang = float(1.5 * M_PI);
@@ -413,7 +416,9 @@ SuggestionView::SuggestionView(int from)
 
 void SuggestionView::update(int from)
 {
-  static constexpr glm::vec3 SuggestionColor = {0.25, 0.05, -2.f};
+  static constexpr std::array<glm::vec2, 4> sCorners = {
+    {{-0.025f, -0.025f}, {0.025f, -0.025f}, {0.025f, 0.025f}, {-0.025f, 0.025f}}};
+  static constexpr glm::vec3 SuggestionColor = {1.f, 0.05, -2.f};
   static constexpr float     SuggestionDepth = -0.1f;
   clear();
   MoveList legal;
@@ -427,8 +432,8 @@ void SuggestionView::update(int from)
     int                   to  = (begin++)->to();
     glm::ivec2            pos = {to % 8, to / 8};
     for (int vi = 0; vi < 4; ++vi) {
-      quad[vi] =
-        Vertex {glm::vec3(quadVertex(pos, vi), SuggestionDepth), SuggestionColor};
+      quad[vi] = Vertex {glm::vec3(quadCenter(pos) + sCorners[vi], SuggestionDepth),
+                         SuggestionColor};
     }
     *(dst++) = quad[0];
     *(dst++) = quad[1];
@@ -471,46 +476,48 @@ static void glfw_error_cb(int error, const char* desc)
   gl::logger().error("GLFW Error {}: {}", error, desc);
 }
 
-static Response& myResponse()
-{
-  static Response sMove = Response::none();
-  return sMove;
-}
+static bool sMyTurn = false;
 
 static void onMouseButton(GLFWwindow* window, int button, int action, int mods)
 {
-  static std::array<int, 2> sMove    = {{-1, -1}};
-  static auto&              response = myResponse();
+  static std::array<int, 2> sMove = {{-1, -1}};
   if (button == GLFW_MOUSE_BUTTON_LEFT) {
     int& target = sMove[0] == -1 ? sMove[0] : sMove[1];
     if (action == GLFW_PRESS) {
       glm::dvec2 pos;
       GL_CALL(glfwGetCursorPos(window, &pos.x, &pos.y));
       glm::ivec2 ipos = glm::ivec2(glm::floor(pos / 128.0));
-      target          = ipos.y * 8 + ipos.x;
+      if (sFlipBoard) {
+        ipos = glm::ivec2(7, 7) - ipos;
+      }
+      target = ipos.y * 8 + ipos.x;
     }
     else if (action == GLFW_RELEASE) {
       glm::dvec2 pos;
       GL_CALL(glfwGetCursorPos(window, &pos.x, &pos.y));
       glm::ivec2 ipos = glm::ivec2(glm::floor(pos / 128.0));
-      int        t2   = ipos.y * 8 + ipos.x;
+      if (sFlipBoard) {
+        ipos = glm::ivec2(7, 7) - ipos;
+      }
+      int t2 = ipos.y * 8 + ipos.x;
       if (t2 != target) {
         target = -1;
       }
       if (sMove[0] != -1 && sMove[1] != -1) {
         std::string mv = std::string(SquareCoord[sMove[0]]);
         mv += SquareCoord[sMove[1]];
-        std::cout << "You: " << mv << std::endl;
         sSuggestionView->clear(true);
-        response = doMove(mv);
-        if (response.isNone()) {
+        bool success = doMove(mv);
+        if (success) {
+          std::cout << "You: " << mv << std::endl;
+          sMove   = {{-1, -1}};
+          sMyTurn = true;
+        }
+        else {
           // Not a legal move.
           // Likely the user just wants to change their piece selection.
           sMove[0] = std::exchange(sMove[1], -1);
           sSuggestionView->update(sMove[0]);
-        }
-        else {
-          sMove = {{-1, -1}};
         }
       }
       else if (sMove[0] != -1) {
@@ -562,8 +569,12 @@ int initGL(GLFWwindow*& window)
   return 0;
 }
 
-void game()
+void game(bool asBlack, bool flipBoard)
 {
+  if (asBlack) {
+    sMyTurn = true;
+  }
+  sFlipBoard = asBlack != flipBoard;
   using namespace std::chrono_literals;
   GLFWwindow* window = nullptr;
   try {
@@ -587,23 +598,31 @@ void game()
       sMoveView->draw();
       sSuggestionView->draw();
       glfwSwapBuffers(window);
-      if (myResponse().mMove) {  // Pototo's move responding to the user's move.
-        std::this_thread::sleep_for(1s);
-        std::cout << " Me: " << *(myResponse().mMove) << std::endl;
-        myResponse().mMove->commit(currentPosition());
-        update(*(myResponse().mMove));
-        myResponse() = Response::none();
-        currentPosition().freezeState();
-      }
-      else if (myResponse().mConclusion == Conclusion::CHECKMATE) {
-        std::cout << "It's a checkmate!\n";
-        myResponse() = Response::none();
-        glfwSetMouseButtonCallback(window, nullptr);
-      }
-      else if (myResponse().mConclusion == Conclusion::STALEMATE) {
-        std::cout << "It's a stalemate!\n";
-        myResponse() = Response::none();
-        glfwSetMouseButtonCallback(window, nullptr);
+      if (sMyTurn) {
+        Response response;
+        {
+          Timer timer("Thinking time: ");
+          response = bestMove(currentPosition());
+        }
+        if (response.mMove) {  // Pototo's move responding to the user's move.
+          std::this_thread::sleep_for(300ms);
+          std::cout << " Me: " << *(response.mMove) << std::endl;
+          response.mMove->commit(currentPosition());
+          update(*(response.mMove));
+          response = Response::none();
+          currentPosition().freezeState();
+          sMyTurn = false;
+        }
+        else if (response.mConclusion == Conclusion::CHECKMATE) {
+          std::cout << "It's a checkmate!\n";
+          response = Response::none();
+          glfwSetMouseButtonCallback(window, nullptr);
+        }
+        else if (response.mConclusion == Conclusion::STALEMATE) {
+          std::cout << "It's a stalemate!\n";
+          response = Response::none();
+          glfwSetMouseButtonCallback(window, nullptr);
+        }
       }
     }
     gl::logger().info("Closing window...\n");
