@@ -10,8 +10,18 @@ if(NOT DEFINED ENV{VCPKG_PATH})
 endif()
 
 set(VCPKG_FEATURE_FLAGS versions)
-set(VCPKG_TARGET_TRIPLET x64-linux)
-set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake)
+
+if (WIN32)
+   set(VCPKG_TARGET_TRIPLET x64-windows)
+   file(TO_CMAKE_PATH $ENV{VCPKG_PATH} VCPKG_PATH)
+   set(CMAKE_TOOLCHAIN_FILE ${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake)
+   set(PYTHON_CMD python)
+   add_compile_definitions(_USE_MATH_DEFINES)
+else()
+   set(VCPKG_TARGET_TRIPLET x64-linux)
+   set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake)
+   set(PYTHON_CMD python3)
+endif()
 
 project(potato)
 
@@ -50,7 +60,7 @@ target_include_directories(potato PRIVATE "./")
 add_custom_command(
   OUTPUT ${PROJECT_SOURCE_DIR}/Tables.h
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  COMMAND python3 genTables.py > Tables.h
+  COMMAND ${PYTHON_CMD} genTables.py > Tables.h
   DEPENDS ${PROJECT_SOURCE_DIR}/genTables.py
   COMMENT "Generating lookup tables for moves..."
 )
@@ -65,7 +75,7 @@ add_custom_command( # This command regenerates the texture from svg by running a
   OUTPUT # These files are the outputs of this command
   # When some target needs these files, cmake will run this command to generate them.
   ${CMAKE_CURRENT_BINARY_DIR}/pieces.png ${CMAKE_CURRENT_BINARY_DIR}/pieces.dat
-  COMMAND python3 ${PROJECT_SOURCE_DIR}/genTexture.py ${CMAKE_BUILD_TYPE}
+  COMMAND ${PYTHON_CMD} ${PROJECT_SOURCE_DIR}/genTexture.py ${CMAKE_BUILD_TYPE}
   DEPENDS # This command needs to be rerun whenever the svg is modified.
   ${PROJECT_SOURCE_DIR}/pieces.svg
   COMMENT "Generating texture for pieces..."

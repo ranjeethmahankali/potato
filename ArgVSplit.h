@@ -4,6 +4,7 @@
   and modified for my needs.
  */
 
+#include <algorithm>
 #include <array>
 #include <sstream>
 #include <string>
