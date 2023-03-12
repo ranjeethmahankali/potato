@@ -611,7 +611,6 @@ void game(bool asBlack, bool flipBoard)
           update(*(response.mMove));
           response = Response::none();
           currentPosition().freezeState();
-          sMyTurn = false;
         }
         else if (response.mConclusion == Conclusion::CHECKMATE) {
           std::cout << "It's a checkmate!\n";
@@ -623,6 +622,7 @@ void game(bool asBlack, bool flipBoard)
           response = Response::none();
           glfwSetMouseButtonCallback(window, nullptr);
         }
+        sMyTurn = false;
       }
     }
     gl::logger().info("Closing window...\n");
