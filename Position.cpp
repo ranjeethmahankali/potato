@@ -558,10 +558,13 @@ void Position::popState()
   mState.pop_back();
 }
 
-void Position::freezeState()
+void Position::freezeState(int keep)
 {
-  mState[0] = mState.back();
-  mState.resize(1);
+  if (mState.size() < keep) {
+    return;
+  }
+  std::copy(mState.end() - keep, mState.end(), mState.begin());
+  mState.resize(keep);
 }
 
 void Position::pushCapture(Piece p)

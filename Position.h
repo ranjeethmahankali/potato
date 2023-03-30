@@ -164,7 +164,7 @@ public:
   int             halfMoveCount() const;
   void            pushState();
   void            popState();
-  void            freezeState();
+  void            freezeState(int keep = 4);
   void            pushCapture(Piece p);
   Piece           popCapture();
   static Position empty();
